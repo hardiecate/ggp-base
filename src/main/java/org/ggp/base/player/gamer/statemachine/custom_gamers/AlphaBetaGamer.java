@@ -79,19 +79,16 @@ public final class AlphaBetaGamer extends SampleGamer
         List<List<Move> > allMoves = new ArrayList<List<Move> >();
         // concatenate all moves into a list of lists
         for(int i = 0; i < opponents.size(); i++) {
-            if(i == myIndex) continue;
 
             // get all moves in order of roles 
-            for(int j = 0; j < opponents.size(); j++) {
-                if(i == myIndex) {
-                    List<Move> setMove = new ArrayList<Move>();
-                    setMove.add(move);
-                    allMoves.add(setMove);
-                } else {
-                    List<Move> opponentMoves = 
-                        getStateMachine().findLegals(opponents.get(j), state);
-                    allMoves.add(opponentMoves);
-                }
+            if(i == myIndex) {
+                List<Move> setMove = new ArrayList<Move>();
+                setMove.add(move);
+                allMoves.add(setMove);
+            } else {
+                List<Move> opponentMoves = 
+                    getStateMachine().findLegals(opponents.get(i), state);
+                allMoves.add(opponentMoves);
             }
         }
 
@@ -114,6 +111,8 @@ public final class AlphaBetaGamer extends SampleGamer
                 }
             }
         }
+
+        System.out.println("ENUMERATING MOVES:\n" + allMoves1.toString() + "\n");
 
         // decide best future state given all move combinations
         for(int i = 0; i < allMoves1.size(); i++) {
