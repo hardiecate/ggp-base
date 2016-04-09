@@ -38,7 +38,12 @@ public final class AlphaBetaGamer extends SampleGamer
 
         List<Move> moves = getStateMachine().findLegals(getRole(), getCurrentState());
 
-        Move selection = bestMove(getRole(), getCurrentState());
+        Move selection = moves.get(0);
+        
+        //only do search if there is more than one move to choose from
+        if (moves.size() > 1)
+            selection = bestMove(getRole(), getCurrentState());
+
         long stop = System.currentTimeMillis();
 
         notifyObservers(new GamerSelectedMoveEvent(moves, selection, stop - start));
@@ -70,16 +75,14 @@ public final class AlphaBetaGamer extends SampleGamer
         int myIndex = -1;
         List<Role> opponents = getStateMachine().findRoles();
         for(int i = 0; i < opponents.size(); i++) {
-            if(role == opponents.get(i)) {  
+            if(role.equals(opponents.get(i))) {
                 myIndex = i;
             }
-            break;
         }
 
         List<List<Move> > allMoves = new ArrayList<List<Move> >();
         // concatenate all moves into a list of lists
         for(int i = 0; i < opponents.size(); i++) {
-
             // get all moves in order of roles 
             if(i == myIndex) {
                 List<Move> setMove = new ArrayList<Move>();
@@ -96,7 +99,7 @@ public final class AlphaBetaGamer extends SampleGamer
         List<List<Move> > allMoves1 = new ArrayList<List<Move> >(); //FINAL
         for(int i = 0; i < allMoves.size(); i++) {
             for(int j = 0; j < allMoves.get(i).size(); j++) {
-                List<List<Move> > allMoves2 = new ArrayList<List<Move> >(); //TEMP 
+                List<List<Move>> allMoves2 = new ArrayList<List<Move> >(); //TEMP 
                 if(i == 0) {
                     List<Move> moves = new ArrayList<Move>();
                     moves.add(allMoves.get(i).get(j));
@@ -112,7 +115,6 @@ public final class AlphaBetaGamer extends SampleGamer
             }
         }
 
-        System.out.println("ENUMERATING MOVES:\n" + allMoves1.toString() + "\n");
 
         // decide best future state given all move combinations
         for(int i = 0; i < allMoves1.size(); i++) {
