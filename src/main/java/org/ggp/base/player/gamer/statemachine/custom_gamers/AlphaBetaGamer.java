@@ -80,8 +80,9 @@ public final class AlphaBetaGamer extends SampleGamer
             }
         }
 
-        List<List<Move> > allMoves = new ArrayList<List<Move> >();
+        List<List<Move>> allMoves = new ArrayList<List<Move>>();
         // concatenate all moves into a list of lists
+        // each sublist is located at an index corresponding to its role
         for(int i = 0; i < opponents.size(); i++) {
             // get all moves in order of roles 
             if(i == myIndex) {
@@ -96,30 +97,30 @@ public final class AlphaBetaGamer extends SampleGamer
         }
 
         // enumerate all combinations of moves 
-        List<List<Move> > allMoves1 = new ArrayList<List<Move> >(); //FINAL
+        List<List<Move>> allMoveCombos = new ArrayList<List<Move>>(); //FINAL
         for(int i = 0; i < allMoves.size(); i++) {
             for(int j = 0; j < allMoves.get(i).size(); j++) {
-                List<List<Move>> allMoves2 = new ArrayList<List<Move> >(); //TEMP 
+                List<List<Move>> tempMoveCombos = new ArrayList<List<Move>>(); //TEMP 
                 if(i == 0) {
                     List<Move> moves = new ArrayList<Move>();
                     moves.add(allMoves.get(i).get(j));
-                    allMoves1.add(moves);
+                    allMoveCombos.add(moves);
                 } else {
-                    for(int k = 0; k < allMoves1.size(); k++) {
-                        List<Move> copyList = new ArrayList<Move>(allMoves1.get(k));
+                    for(int k = 0; k < allMoveCombos.size(); k++) {
+                        List<Move> copyList = new ArrayList<Move>(allMoveCombos.get(k));
                         copyList.add(allMoves.get(i).get(j));
-                        allMoves2.add(copyList);
+                        tempMoveCombos.add(copyList);
                     }
-                    allMoves1 = new ArrayList<List<Move> >(allMoves2);
+                    allMoveCombos = new ArrayList<List<Move>>(tempMoveCombos);
                 }
             }
         }
 
 
         // decide best future state given all move combinations
-        for(int i = 0; i < allMoves1.size(); i++) {
+        for(int i = 0; i < allMoveCombos.size(); i++) {
             MachineState candidateState = 
-                getStateMachine().findNext(allMoves1.get(i), state);
+                getStateMachine().findNext(allMoveCombos.get(i), state);
             //pick highest candidateState
             int result = maxScore(role, candidateState, alpha, beta);
             beta = Math.min(beta, result);
