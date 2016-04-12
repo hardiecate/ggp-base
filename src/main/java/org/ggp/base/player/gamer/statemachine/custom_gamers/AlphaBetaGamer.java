@@ -17,8 +17,7 @@ import org.ggp.base.util.statemachine.Role;
 import org.ggp.base.util.statemachine.MachineState;
 
 /**
- * AlphaBetaGamer` is a very simple state-machine-based Gamer that will always
- * pick randomly from the legal moves it finds at any state in the game.
+ * AlphaBetaGamer implements minimax with alpha-beta pruning
  */
 public final class AlphaBetaGamer extends SampleGamer
 {
@@ -59,10 +58,8 @@ public final class AlphaBetaGamer extends SampleGamer
         int alpha = lowerThreshold;
         int beta = upperThreshold;
 
-        System.out.println(moves);
         for(int i = 0; i < moves.size(); i++) {
             int result = minScore(role, moves.get(i), state, alpha, beta);
-            System.out.println(moves.get(i) + " score: " + result);
             if(result == upperThreshold) return moves.get(i);
             if(result > score) {
                 score = result;

@@ -12,8 +12,8 @@ import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
 /**
- * RandomGamer is a very simple state-machine-based Gamer that will always
- * pick randomly from the legal moves it finds at any state in the game.
+ * LegalGamer is a very simple state-machine-based Gamer that will always
+ * pick the first choice from the legal moves it finds at any state in the game.
  */
 public final class LegalGamer extends SampleGamer
 {
