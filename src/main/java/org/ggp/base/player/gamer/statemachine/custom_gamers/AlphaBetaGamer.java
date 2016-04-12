@@ -17,7 +17,7 @@ import org.ggp.base.util.statemachine.Role;
 import org.ggp.base.util.statemachine.MachineState;
 
 /**
- * RandomGamer is a very simple state-machine-based Gamer that will always
+ * AlphaBetaGamer` is a very simple state-machine-based Gamer that will always
  * pick randomly from the legal moves it finds at any state in the game.
  */
 public final class AlphaBetaGamer extends SampleGamer
@@ -59,8 +59,10 @@ public final class AlphaBetaGamer extends SampleGamer
         int alpha = lowerThreshold;
         int beta = upperThreshold;
 
+        System.out.println(moves);
         for(int i = 0; i < moves.size(); i++) {
             int result = minScore(role, moves.get(i), state, alpha, beta);
+            System.out.println(moves.get(i) + " score: " + result);
             if(result == upperThreshold) return moves.get(i);
             if(result > score) {
                 score = result;
@@ -96,26 +98,27 @@ public final class AlphaBetaGamer extends SampleGamer
             }
         }
 
-        // enumerate all combinations of moves 
         List<List<Move>> allMoveCombos = new ArrayList<List<Move>>(); //FINAL
         for(int i = 0; i < allMoves.size(); i++) {
-            for(int j = 0; j < allMoves.get(i).size(); j++) {
-                List<List<Move>> tempMoveCombos = new ArrayList<List<Move>>(); //TEMP 
-                if(i == 0) {
+            List<Move> currMoves = allMoves.get(i);
+            if(i == 0) {
+                for (int j = 0; j < currMoves.size(); j++) {
                     List<Move> moves = new ArrayList<Move>();
                     moves.add(allMoves.get(i).get(j));
                     allMoveCombos.add(moves);
-                } else {
-                    for(int k = 0; k < allMoveCombos.size(); k++) {
-                        List<Move> copyList = new ArrayList<Move>(allMoveCombos.get(k));
-                        copyList.add(allMoves.get(i).get(j));
-                        tempMoveCombos.add(copyList);
-                    }
-                    allMoveCombos = new ArrayList<List<Move>>(tempMoveCombos);
                 }
+            } else {
+                List<List<Move>> tempMoveCombos = new ArrayList<List<Move>>();
+                for (int j = 0; j < allMoveCombos.size(); j++) {
+                    for (int k = 0; k < currMoves.size(); k++) {
+                        List<Move> newCombo = new ArrayList<Move>(allMoveCombos.get(j));
+                        newCombo.add(currMoves.get(k));
+                        tempMoveCombos.add(newCombo);
+                    }
+                }
+                allMoveCombos = tempMoveCombos;
             }
         }
-
 
         // decide best future state given all move combinations
         for(int i = 0; i < allMoveCombos.size(); i++) {
