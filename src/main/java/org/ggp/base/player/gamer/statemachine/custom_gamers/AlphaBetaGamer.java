@@ -55,8 +55,9 @@ public final class AlphaBetaGamer extends SampleGamer
         List<Move> moves = getStateMachine().findLegals(role, state);
         Move best = moves.get(0);
         int score = 0;
-        int alpha = lowerThreshold;
-        int beta = upperThreshold;
+        //int alpha = lowerThreshold;
+        int alpha = -upperThreshold;
+        int beta = upperThreshold + 1;
 
         for(int i = 0; i < moves.size(); i++) {
             int result = minScore(role, moves.get(i), state, alpha, beta);
@@ -116,11 +117,10 @@ public final class AlphaBetaGamer extends SampleGamer
                 allMoveCombos = tempMoveCombos;
             }
         }
-
+        //System.out.println(allMoveCombos);
         // decide best future state given all move combinations
         for(int i = 0; i < allMoveCombos.size(); i++) {
-            MachineState candidateState = 
-                getStateMachine().findNext(allMoveCombos.get(i), state);
+            MachineState candidateState = getStateMachine().findNext(allMoveCombos.get(i), state);
             //pick highest candidateState
             int result = maxScore(role, candidateState, alpha, beta);
             beta = Math.min(beta, result);
