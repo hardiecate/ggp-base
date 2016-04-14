@@ -80,43 +80,8 @@ public final class AlphaBetaGamer extends SampleGamer
             }
         }
 
-        List<List<Move>> allMoves = new ArrayList<List<Move>>();
-        // concatenate all moves into a list of lists
-        // each sublist is located at an index corresponding to its role
-        for(int i = 0; i < opponents.size(); i++) {
-            // get all moves in order of roles 
-            if(i == myIndex) {
-                List<Move> setMove = new ArrayList<Move>();
-                setMove.add(move);
-                allMoves.add(setMove);
-            } else {
-                List<Move> opponentMoves = 
-                    getStateMachine().findLegals(opponents.get(i), state);
-                allMoves.add(opponentMoves);
-            }
-        }
+        List<List<Move>> allMoveCombos = getStateMachine().getLegalJointMoves(state, role, move);
 
-        List<List<Move>> allMoveCombos = new ArrayList<List<Move>>(); //FINAL
-        for(int i = 0; i < allMoves.size(); i++) {
-            List<Move> currMoves = allMoves.get(i);
-            if(i == 0) {
-                for (int j = 0; j < currMoves.size(); j++) {
-                    List<Move> moves = new ArrayList<Move>();
-                    moves.add(allMoves.get(i).get(j));
-                    allMoveCombos.add(moves);
-                }
-            } else {
-                List<List<Move>> tempMoveCombos = new ArrayList<List<Move>>();
-                for (int j = 0; j < allMoveCombos.size(); j++) {
-                    for (int k = 0; k < currMoves.size(); k++) {
-                        List<Move> newCombo = new ArrayList<Move>(allMoveCombos.get(j));
-                        newCombo.add(currMoves.get(k));
-                        tempMoveCombos.add(newCombo);
-                    }
-                }
-                allMoveCombos = tempMoveCombos;
-            }
-        }
         //System.out.println(allMoveCombos);
         // decide best future state given all move combinations
         for(int i = 0; i < allMoveCombos.size(); i++) {
