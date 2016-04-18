@@ -21,7 +21,9 @@ import org.ggp.base.util.statemachine.MachineState;
  */
 public final class BoundedDepthGamer extends SampleGamer
 {
-    int maxDepth = 5;
+    int maxDepth = 4;
+    int upperThreshold = 100;
+    int lowerThreshold = 0;
 
     /**
      * This function is called at the start of each round
@@ -54,9 +56,11 @@ public final class BoundedDepthGamer extends SampleGamer
         List<Move> moves = getStateMachine().findLegals(role, state);
         Move best = moves.get(0);
         int score = 0;
+        int alpha = -upperThreshold;
+        int beta = upperThreshold + 1;
 
         for(int i = 0; i < moves.size(); i++) {
-            int result = minScore(role, moves.get(i), state, 0);
+            int result = minScore(role, moves.get(i), state, 0, alpha, beta);
             if(result == 100) return moves.get(i);
             if(result > score) {
                 score = result;
@@ -66,9 +70,10 @@ public final class BoundedDepthGamer extends SampleGamer
         return best;
     }
 
-    private int evalFn(Role role, MachineState state) throws MoveDefinitionException
+    private int evalFn(Role role, MachineState state) throws MoveDefinitionException, GoalDefinitionException
     {
-        return mobility(role, state);
+        //return weightedComboFn(role, state);
+        return goalProximity(role, state);
     }
 
     private int mobility(Role role, MachineState state) throws MoveDefinitionException
@@ -85,48 +90,40 @@ public final class BoundedDepthGamer extends SampleGamer
 
     private int goalProximity(Role role, MachineState state) throws GoalDefinitionException
     {
-        return getStateMachine().findReward(role, state);
+        try {
+            return getStateMachine().getGoal(state, role);
+        } catch (GoalDefinitionException e) {
+            return 0;
+        }
     }
 
     //adjust these
-    double kMobilityWeight = 0.4;
-    double kFocusWeight = 0.1;
-    double kGoalProximityWeight = 0.5;
+    double kMobilityWeight = 0.05;
+    double kFocusWeight = 0.05;
+    double kGoalProximityWeight = 0.02;
 
     private int weightedComboFn(Role role, MachineState state) throws GoalDefinitionException, MoveDefinitionException
     {
         int result = (int)(kMobilityWeight * mobility(role, state)) + (int)(kFocusWeight * focus(role, state)) + (int)(kGoalProximityWeight * goalProximity(role, state));
-        return Math.max(result, 100);
+        return Math.min(result, 100);
     }
 
-    private int minScore(Role role, Move move, MachineState state, int level) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
+    private int minScore(Role role, Move move, MachineState state, int level, int alpha, int beta) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {   
-        int myIndex = -1;
-        List<Role> opponents = getStateMachine().findRoles();
-        for(int i = 0; i < opponents.size(); i++) {
-            if(role.equals(opponents.get(i))) {
-                myIndex = i;
-            }
-        }
-
         List<List<Move>> allMoveCombos = getStateMachine().getLegalJointMoves(state, role, move);
-        //System.out.println(allMoveCombos);
         // decide best future state given all move combinations
-        int score = 100;
         for(int i = 0; i < allMoveCombos.size(); i++) {
             MachineState candidateState = getStateMachine().findNext(allMoveCombos.get(i), state);
-            int result = maxScore(role, candidateState, level + 1);
-            if (result == 0) {
-                return 0;
-            }
-            if (result < score) {
-                score = result;
+            int result = maxScore(role, candidateState, level + 1, alpha, beta);
+            beta = Math.min(beta, result);
+            if (beta <= alpha) {
+                return alpha;
             }
         }
-        return score;
+        return beta;
     }
 
-    private int maxScore(Role role, MachineState state, int level) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
+    private int maxScore(Role role, MachineState state, int level, int alpha, int beta) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
         if(getStateMachine().findTerminalp(state)) {
             return getStateMachine().findReward(role, state);
@@ -138,16 +135,13 @@ public final class BoundedDepthGamer extends SampleGamer
         List<Move> moves = 
             getStateMachine().findLegals(role, state);
 
-        int score = 0;
         for(int i = 0; i < moves.size(); i++) {
-            int result = minScore(role, moves.get(i), state, level);
-            if (result == 100) {
-                return 100;
-            }
-            if (result > score) {
-                score = result;
+            int result = minScore(role, moves.get(i), state, level, alpha, beta);
+            alpha = Math.max(alpha, result);
+            if(alpha >= beta) {
+                return beta;
             }
         }
-        return score;
+        return alpha;
     }
 }
