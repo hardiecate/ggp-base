@@ -21,7 +21,7 @@ import org.ggp.base.util.statemachine.MachineState;
  */
 public final class BoundedDepthGamer extends SampleGamer
 {
-    int maxDepth = 4;
+    int maxDepth = 5;
     int upperThreshold = 100;
     int lowerThreshold = 0;
 
@@ -72,7 +72,6 @@ public final class BoundedDepthGamer extends SampleGamer
 
     private int evalFn(Role role, MachineState state) throws MoveDefinitionException, GoalDefinitionException
     {
-        //return weightedComboFn(role, state);
         return goalProximity(role, state);
     }
 
