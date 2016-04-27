@@ -87,7 +87,7 @@ public final class MCSGamer extends SampleGamer
             return getStateMachine().findReward(role, state);
         }
         if (level >= maxLevels) {
-            return (int)monteCarlo(role, state, nProbes);
+            return (int)monteCarlo(role, state);
         }
 
         List<Move> moves = 
@@ -95,7 +95,7 @@ public final class MCSGamer extends SampleGamer
 
         int score = 0;
         for(int i = 0; i < moves.size(); i++) {
-            int result = minScore(role, moves.get(i), level + 1);
+            int result = minScore(role, moves.get(i), state, level + 1);
             if (result == 100) {
                 return 100;
             }
@@ -106,7 +106,7 @@ public final class MCSGamer extends SampleGamer
         return score;
     }
 
-    private double monteCarlo(role, state, nProbes) 
+    private double monteCarlo(Role role, MachineState state) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
         double totalScore = 0;
         for (int i = 0; i < nProbes; i++) {
@@ -115,21 +115,22 @@ public final class MCSGamer extends SampleGamer
         return totalScore / nProbes;
     }
 
-    private int depthCharge(role, state)
+    private int depthCharge(Role role, MachineState state) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
         if(getStateMachine().findTerminalp(state)) {
             return getStateMachine().findReward(role, state);
         }
-        ArrayList<Role> roles = getStateMachine().getRoles();
-        for (int i = 0; i < roles.size(); i++) {
-            ArrayList<Move> moves = getStateMachine().findLegals(role, state);
-            int randIndex = Random.nextInt(moves.size() - 1);
-            Move randomMove = moves.get(randIndex);
-        }
-        
-        for ()
-        for (int i = 0; i < moves.size()l; i++) {
 
+        List<Role> roles = getStateMachine().getRoles();
+        ArrayList<Move> randomMoves = new ArrayList<Move>(roles.size());
+        for (int i = 0; i < roles.size(); i++) {
+            List<Move> moves = getStateMachine().findLegals(role, state);
+            int randIndex = new Random().nextInt(moves.size());
+            Move randomMove = moves.get(randIndex);
+            randomMoves.set(i, randomMove);
         }
+
+        MachineState newState = getStateMachine().getNextState(state, randomMoves);
+        return depthCharge(role, newState);
     }
 }
