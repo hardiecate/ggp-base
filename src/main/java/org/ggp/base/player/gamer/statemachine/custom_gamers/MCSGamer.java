@@ -21,8 +21,14 @@ import org.ggp.base.util.statemachine.MachineState;
  */
 public final class MCSGamer extends SampleGamer
 {
-    int maxLevels = 4;
+
+    // Hyperparameters - change based on gameplay
+    int maxLevels = 1;
     int nProbes = 2;
+
+    //Constants
+    int upperThreshold = 100;
+    int lowerThreshold = 0;
 
     /*
      * This function is called at the start of each round
@@ -49,7 +55,7 @@ public final class MCSGamer extends SampleGamer
         return selection;
     }
 
-    private int minScore(Role role, Move move, MachineState state, int level) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
+    private int minScore(Role role, Move move, MachineState state, int level, int alpha, int beta) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {  
         List<List<Move>> allMoveCombos = getStateMachine().getLegalJointMoves(state, role, move);
 
@@ -57,12 +63,13 @@ public final class MCSGamer extends SampleGamer
         for(int i = 0; i < allMoveCombos.size(); i++) {
             MachineState candidateState = getStateMachine().findNext(allMoveCombos.get(i), state);
             //pick highest candidateState
-            int result = maxScore(role, candidateState, level);
-            if (result <= score) {
-                score = result;
+            int result = maxScore(role, candidateState, level, alpha, beta);
+            beta = Math.min(beta, result);
+            if(beta <= alpha) {
+                return alpha;
             }
         }
-        return score;
+        return beta;
     }
 
     private Move bestMove(Role role, MachineState state) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException 
@@ -70,9 +77,11 @@ public final class MCSGamer extends SampleGamer
         List<Move> moves = getStateMachine().findLegals(role, state);
         Move best = moves.get(0);
         int score = 0;
+        int alpha = -upperThreshold;
+        int beta = upperThreshold + 1;
 
         for(int i = 0; i < moves.size(); i++) {
-            int result = minScore(role, moves.get(i), state, 0);
+            int result = minScore(role, moves.get(i), state, 0, alpha, beta);
             if(result > score) {
                 score = result;
                 best = moves.get(i);
@@ -81,7 +90,7 @@ public final class MCSGamer extends SampleGamer
         return best;
     }
 
-    private int maxScore(Role role, MachineState state, int level) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
+    private int maxScore(Role role, MachineState state, int level, int alpha, int beta) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
         if(getStateMachine().findTerminalp(state)) {
             return getStateMachine().findReward(role, state);
@@ -95,15 +104,16 @@ public final class MCSGamer extends SampleGamer
 
         int score = 0;
         for(int i = 0; i < moves.size(); i++) {
-            int result = minScore(role, moves.get(i), state, level + 1);
+            int result = minScore(role, moves.get(i), state, level + 1, alpha, beta);
             if (result == 100) {
                 return 100;
             }
-            if (result >= score) {
-                score = result;
-            } 
+            alpha = Math.max(alpha, result);
+            if(alpha >= beta) {
+                return beta;
+            }
         }
-        return score;
+        return alpha;
     }
 
     private double monteCarlo(Role role, MachineState state) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
