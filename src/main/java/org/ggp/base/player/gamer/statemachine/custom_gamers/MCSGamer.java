@@ -21,8 +21,8 @@ import org.ggp.base.util.statemachine.MachineState;
  */
 public final class MCSGamer extends SampleGamer
 {
-    int maxLevels = 10;
-    int nProbes = 4;
+    int maxLevels = 4;
+    int nProbes = 2;
 
     /*
      * This function is called at the start of each round
@@ -53,12 +53,12 @@ public final class MCSGamer extends SampleGamer
     {  
         List<List<Move>> allMoveCombos = getStateMachine().getLegalJointMoves(state, role, move);
 
-        int score = 0;
+        int score = 100;
         for(int i = 0; i < allMoveCombos.size(); i++) {
             MachineState candidateState = getStateMachine().findNext(allMoveCombos.get(i), state);
             //pick highest candidateState
             int result = maxScore(role, candidateState, level);
-            if (result >= score) {
+            if (result <= score) {
                 score = result;
             }
         }
@@ -124,10 +124,10 @@ public final class MCSGamer extends SampleGamer
         List<Role> roles = getStateMachine().getRoles();
         ArrayList<Move> randomMoves = new ArrayList<Move>(roles.size());
         for (int i = 0; i < roles.size(); i++) {
-            List<Move> moves = getStateMachine().findLegals(role, state);
+            List<Move> moves = getStateMachine().findLegals(roles.get(i), state);
             int randIndex = new Random().nextInt(moves.size());
             Move randomMove = moves.get(randIndex);
-            randomMoves.set(i, randomMove);
+            randomMoves.add(randomMove);
         }
 
         MachineState newState = getStateMachine().getNextState(state, randomMoves);
