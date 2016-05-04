@@ -263,7 +263,12 @@ public final class MCTS2Gamer extends SampleGamer
         if (currNode.isTerminal) {
             int reward = stateMachine.findReward(ourRole, currNode.nodeState);
             if (twoPlayerTurnGame) {
-                return Math.max(0, reward - stateMachine.findReward(otherRole, currNode.nodeState));
+                int otherReward = stateMachine.findReward(otherRole, currNode.nodeState);
+                if (reward == 0 && otherReward == 100) {
+                    return -100;
+                } else {
+                    return Math.max(0, reward - otherReward);
+                }
             }
             return reward;
         }
