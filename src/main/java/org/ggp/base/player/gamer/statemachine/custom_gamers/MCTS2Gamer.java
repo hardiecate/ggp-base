@@ -30,7 +30,7 @@ class TreeNode
     Map<Move, List<List<Move>>> legalMoveMap;
     TreeNode parent;
     boolean isTerminal;
-    List<TreeNode> children;
+    List<TreeNode> children; // don't currently do anything with our children
 
     public TreeNode(MachineState state, StateMachine stateMachine, Role ourRole, TreeNode parentNode) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
@@ -79,12 +79,11 @@ public final class MCTS2Gamer extends SampleGamer
     private StateMachine stateMachine = null;
     // General game state trackers
     private int numTurnsTaken = 0;
-    private int currentDepth = 0;
     private Move lastMove = null;
     // Monte Carlo Tree Search variabless
     Map<Integer, TreeNode> nodesEncountered = null; //from state hashcode to node
-    private int numProbes = 50;
-    private int explorationDepth = 1;
+    private int numProbes = 10;
+    private int explorationDepth = 2;
     private TreeNode lastNode = null; 
     private long currStartTime = 0;
     private long currTimeout = 0;
@@ -123,14 +122,17 @@ public final class MCTS2Gamer extends SampleGamer
     public Move stateMachineSelectMove(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
         long start = System.currentTimeMillis();
+        // track the start time and the timeout time in private variables for now
         currStartTime = start;
         currTimeout = timeout;
 
+        // retreive current node from nodes encountered dictionary
+        // should probably change this
         MachineState currState = getCurrentState();
         Integer currStateHash = currState.hashCode();
         TreeNode currNode = nodesEncountered.get(currStateHash);
 
-        // shouldn't be called
+        // shouldn't be called - DELETE
         if (currNode == null) {
             currNode = new TreeNode(currState, stateMachine, ourRole, null);
             nodesEncountered.put(currStateHash, currNode);
@@ -164,21 +166,25 @@ public final class MCTS2Gamer extends SampleGamer
             List<Move> jointMove = possibleJointMoves.get(i);
             MachineState candidateState = stateMachine.findNext(jointMove, currNode.nodeState);
 
-            // create new node if one does not exist
+            // create new node if one does not exist - setting the current node as parent
             TreeNode nextNode = nodesEncountered.get(candidateState.hashCode());
             if (nextNode == null) {
                 nextNode = new TreeNode(candidateState, stateMachine, ourRole, currNode);
                 nodesEncountered.put(candidateState.hashCode(), nextNode);
             }
+            // make sure to set the children of a node
+            // don't currently do anything with children
             if (!currNode.children.contains(nextNode)) {
                 currNode.children.add(nextNode);
             }
+
             int result = maxScore(nextNode, depth, alpha, beta);
             beta = Math.min(beta, result);
             if (beta <= alpha) {
                 return alpha;
             }
         }
+        
         return beta;
     }
 
@@ -186,18 +192,24 @@ public final class MCTS2Gamer extends SampleGamer
     {   
         if (currNode.isTerminal) {
             int reward = stateMachine.findReward(ourRole, currNode.nodeState);
+            /*
+            // possible 
             if (twoPlayerTurnGame) {
                 return Math.max(0, reward - stateMachine.findReward(otherRole, currNode.nodeState));
             }
+            */
             return reward;
         }
+
         if (currTimeout - System.currentTimeMillis() < minPlayTimeLeft) {
             System.out.println("We've timed out maxScore. Time elapsed: " + (System.currentTimeMillis() - currStartTime) + " | timeout buffer: " + minPlayTimeLeft + " | time left: " + (currTimeout - System.currentTimeMillis()));
             return currNode.getExpectedReward();
         }
+
         if (depth >= explorationDepth) {
             return monteCarlo(currNode);
         }
+
         List<Move> moves = currNode.legalMoves;
         int score = 0;
         for (int i = 0; i < moves.size(); i++) {
@@ -221,7 +233,6 @@ public final class MCTS2Gamer extends SampleGamer
         for (int i = 0; i < moves.size(); i++) {
             // check for timeout
             if (currTimeout - System.currentTimeMillis() < minPlayTimeLeft) {
-                System.out.println(currTimeout - System.currentTimeMillis());
                 return bestMove;
             }
             int result = minScore(moves.get(i), currNode, 0, alpha, beta);
@@ -239,29 +250,32 @@ public final class MCTS2Gamer extends SampleGamer
         double totalScore = 0;
         int numChargesCompleted = 0;
         int score = 0;
-        for (; numChargesCompleted < numProbes; numChargesCompleted++) {
-            if (currTimeout - System.currentTimeMillis() < minPlayTimeLeft) {
-                break;
-            }
+
+        for (; numChargesCompleted < numProbes && currTimeout - System.currentTimeMillis() >= minPlayTimeLeft; numChargesCompleted++) {
             int currScore = depthCharge(currNode);
             if (currScore == -1) {
-                break;
+                break; // depth charge detected a timeout
             } else {
                 backPropagate(selectedNode, currScore);
             }
             totalScore += currScore;
         }
+        // if we have partially complete a depth charge, 
         if (numChargesCompleted != 0) {
             score = (int)((double)totalScore / (double)numChargesCompleted);
         }
-        System.out.println("Completed " + numChargesCompleted + " of " + numProbes + " probes for a total of:  " + score);
-        return score;
+
+        System.out.println("Completed " + numChargesCompleted + " of " + numProbes + " probes for a total of:  " + score + "| Updating score to: " + currNode.getExpectedReward());
+        //return score;
+        return currNode.getExpectedReward();
     }
 
     private int depthCharge(TreeNode currNode) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
         if (currNode.isTerminal) {
             int reward = stateMachine.findReward(ourRole, currNode.nodeState);
+            /*
+            // Possibly take into account the other players scores and whether it is a zero sum
             if (twoPlayerTurnGame) {
                 int otherReward = stateMachine.findReward(otherRole, currNode.nodeState);
                 if (reward == 0 && otherReward == 100) {
@@ -270,9 +284,14 @@ public final class MCTS2Gamer extends SampleGamer
                     return Math.max(0, reward - otherReward);
                 }
             }
+            */
             return reward;
         }
-        if (currTimeout - System.currentTimeMillis() < minPlayTimeLeft) return -1;
+
+        if (currTimeout - System.currentTimeMillis() < minPlayTimeLeft) {
+            return -1;
+        }
+
         List<Move> randomJointMoves = stateMachine.getRandomJointMove(currNode.nodeState);
         MachineState nextState = stateMachine.getNextState(currNode.nodeState, randomJointMoves);
         TreeNode nextNode = nodesEncountered.get(nextState.hashCode());
@@ -283,7 +302,11 @@ public final class MCTS2Gamer extends SampleGamer
         if (!currNode.children.contains(nextNode)) {
             currNode.children.add(nextNode);
         }
-        if (currTimeout - System.currentTimeMillis() < minPlayTimeLeft) return -1;
+
+        if (currTimeout - System.currentTimeMillis() < minPlayTimeLeft) {
+            return -1;
+        } 
+
         return depthCharge(nextNode);
     }
 
@@ -291,16 +314,19 @@ public final class MCTS2Gamer extends SampleGamer
     {
         currNode.numEncounters++;
         currNode.totalReward += score;
-        if (currNode.parent != null) {
+        // keep going until we reach root or the last node selected (current stage)
+        if (currNode.parent != null && currNode != lastNode) {
             backPropagate(currNode.parent, score);
         }
     }
 
+    // selectfn straight from notes
     private double selectfn(TreeNode currNode) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
         return currNode.totalReward + Math.sqrt(2 * Math.log(currNode.parent.numEncounters / currNode.numEncounters));
     }
 
+    // selection is based directly from notes
     private TreeNode selection(TreeNode currNode) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
         if (currNode.numEncounters == 0) {
