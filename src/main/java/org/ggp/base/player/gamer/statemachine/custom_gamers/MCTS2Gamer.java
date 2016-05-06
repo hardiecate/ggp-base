@@ -6,9 +6,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 import java.lang.Math;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
 
 import org.ggp.base.player.gamer.event.GamerSelectedMoveEvent;
 import org.ggp.base.util.statemachine.Move;
@@ -20,101 +17,230 @@ import org.ggp.base.util.statemachine.Role;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.StateMachine;
 
-
-class TreeNode
+/**
+ * MCTSGamer
+ */
+public final class MCTS2Gamer extends SampleGamer
 {
-    MachineState nodeState;
-    int numEncounters;
-    int totalReward;
-    List<Move> legalMoves;
-    Map<Move, List<List<Move>>> legalMoveMap;
-    TreeNode parent;
-    boolean isTerminal;
-    List<TreeNode> children; // don't currently do anything with our children
+    class TreeNode {
+        private MachineState state;
+        private List<TreeNode> children;
+        private int visits;
+        private TreeNode parent;
+        private double utility;
 
-    public TreeNode(MachineState state, StateMachine stateMachine, Role ourRole, TreeNode parentNode) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
-    {
-        nodeState = state;
-        numEncounters = 0;
-        totalReward = 0;
-        isTerminal = stateMachine.findTerminalp(state);
-        parent = parentNode;
-        children = new ArrayList<TreeNode>();
-        legalMoveMap = new HashMap<Move, List<List<Move>>>();
-        legalMoves = null;
-        if (!isTerminal) {
-            legalMoves = stateMachine.findLegals(ourRole, state);
+        // constructor
+        public TreeNode(MachineState state, TreeNode parent) {
+          this.state = state;
+          this.visits = 0;
+          this.utility = 0.0;
+          this.children = new ArrayList<TreeNode>();
+          this.parent = parent;
+        }
+
+        // getter
+        public MachineState getState() { return state; }
+        public List<TreeNode> getChildren() { return children; }
+        public TreeNode getParent() { return parent; }
+        public int getVisits() { return visits; }
+        public double getUtility() { return utility; }
+
+        // setter
+        public void incrementVisits() { this.visits++; }
+        public void setUtility(double val) { this.utility = val; }
+        public void addChild(TreeNode child) { 
+            this.children.add(child); 
+        }
+
+        // overrides 
+        @Override
+        public boolean equals(Object object) {
+            return this.state.equals(((TreeNode)object).state);
+        }
+        @Override
+        public int hashCode() {
+            return this.state.hashCode();
         }
     }
 
-    public int getExpectedReward()
-    {
-        if (numEncounters == 0) return 0;
-        return (int)((double) totalReward / (double) numEncounters);
+    // Hyperparameters - change based on gameplay
+    int maxLevels = 1;
+    int nProbes = 2;
+
+    // Constants
+    int upperThreshold = 100;
+    int lowerThreshold = 0;
+    long minPlayTimeLeft = PREFERRED_PLAY_BUFFER;
+    long minMetagameTimeLeft = PREFERRED_METAGAME_BUFFER;
+
+    // Game Type Enum - allows for special-casing, which good player like Sancho do
+    public enum GameType {
+        SINGLE_PLAYER_GAME,
+        TWO_PLAYER_ALTERNATING_GAME,
+        TWO_PLAYER_SIMULTANEOUS_GAME,
+        MULTI_PLAYER_GAME
     }
 
-    @Override
-    public boolean equals(Object otherNode)
-    {
-        return nodeState.equals(((TreeNode) otherNode).nodeState);
-    }
+    // TODO check for zero sum game
 
-    @Override
-    public int hashCode()
-    {
-        return nodeState.hashCode();
-    }
-}
-
-
-public final class MCTS2Gamer extends SampleGamer
-{
-    // Set timeout stats
-    private long minMetaTimeLeft = PREFERRED_METAGAME_BUFFER; 
-    private long minPlayTimeLeft = PREFERRED_PLAY_BUFFER;
-    // General game info
-    private Role ourRole = null;
-    private int kMinReward = 0;
-    private int kMaxReward = 100;
-    private StateMachine stateMachine = null;
-    // General game state trackers
-    private int numTurnsTaken = 0;
-    private Move lastMove = null;
-    // Monte Carlo Tree Search variabless
-    Map<Integer, TreeNode> nodesEncountered = null; //from state hashcode to node
-    private int numProbes = 10;
-    private int explorationDepth = 2;
-    private TreeNode lastNode = null; 
-    private long currStartTime = 0;
-    private long currTimeout = 0;
-
-    //bullshit 2 player special case stuff
-    private boolean twoPlayerTurnGame = false;
-    private Role otherRole = null;
+    // General Game Info Objects - set in metagame
+    StateMachine sharedStateMachine = null;
+    Role ourRole = null;
+    Role otherRole = null; // for 2 player games only
+    List<Role> roles = null;
+    int numRoles = 0;
+    GameType gameType; // describes type of game
+    TreeNode currRootNode = null; 
 
     @Override
     public void stateMachineMetaGame(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
-        long start = System.currentTimeMillis();
-        currStartTime = start;
-        currTimeout = timeout;
+        long start = System.currentTimeMillis(); 
+        long metagameStopTime = timeout - minMetagameTimeLeft;
 
         // initialize private variables
-        stateMachine = getStateMachine();
+        sharedStateMachine = getStateMachine();
         ourRole = getRole();
-        nodesEncountered = new HashMap<Integer, TreeNode>();
+        roles = sharedStateMachine.getRoles();
+        numRoles = roles.size();
 
-        // set MCTS root node
-        MachineState initialState = stateMachine.findInits();
-        TreeNode rootNode = new TreeNode(initialState, stateMachine, ourRole, null);
-        nodesEncountered.put(rootNode.hashCode(), rootNode);
-        lastNode = rootNode;
+        // get initial state
+        MachineState initialState = sharedStateMachine.findInits();
+        currRootNode = new TreeNode(initialState, null);
 
-        twoPlayerTurnGame = (stateMachine.getRoles().size() == 2);
-        for (Role role : stateMachine.getRoles()) {
-            if (!role.equals(ourRole)) {
-                otherRole = role;
+        // set game type
+        if (numRoles == 1) {
+            gameType = GameType.SINGLE_PLAYER_GAME;
+        } else if (numRoles == 2) {
+            List<Move> randomJointMove = sharedStateMachine.getRandomJointMove(initialState);
+            if ((randomJointMove.get(0).toString().equals("noop") && !randomJointMove.get(1).toString().equals("noop")) 
+                || (!randomJointMove.get(0).toString().equals("noop") && randomJointMove.get(1).toString().equals("noop"))) {
+                gameType = GameType.TWO_PLAYER_ALTERNATING_GAME;
+            } else {
+                gameType = GameType.TWO_PLAYER_SIMULTANEOUS_GAME;
             }
+            for (Role role : roles) {
+                if (!role.equals(ourRole)) {
+                    otherRole = role;
+                    break;
+                }
+            }
+        } else {
+            gameType = GameType.MULTI_PLAYER_GAME;
+        }
+        
+        // expand MCTS tree if we still have time
+        while (System.currentTimeMillis() < metagameStopTime) {
+            MCTS(currRootNode, metagameStopTime);
+            System.out.println(currRootNode.getUtility() / currRootNode.getVisits());
+        }
+    }
+
+    private int MCTS(TreeNode node, long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
+    {
+        TreeNode selectedNode = selection(node);
+
+        if (System.currentTimeMillis() > timeout) return -1;
+
+        expansion(selectedNode);
+
+        if (System.currentTimeMillis() > timeout) return -1;
+
+        return performSimulation(selectedNode);
+    }
+
+    private TreeNode selection(TreeNode node) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
+    {
+        if (node.getVisits() == 0 || sharedStateMachine.findTerminalp(node.getState())) {
+            return node;
+        }
+        for (int i = 0; i < node.getChildren().size(); i++) {
+            if (node.getChildren().get(i).getVisits() == 0) {
+                return node.getChildren().get(i);
+            }
+        }
+        TreeNode selectedNode = node;
+        int maxScore = -1;
+        int minScore = 101;
+
+        // for 2 player games - hacky
+        List<Move> ourLegalMoves = null;
+        List<Move> opponentLegalMoves = null;
+        boolean isOurTurn = true;
+        if (gameType == GameType.TWO_PLAYER_ALTERNATING_GAME) {
+            ourLegalMoves = sharedStateMachine.findLegals(ourRole, node.state);
+            opponentLegalMoves = sharedStateMachine.findLegals(otherRole, node.state);
+            if (ourLegalMoves.size() == 1 && ourLegalMoves.get(0).toString().equals("noop")) {
+                isOurTurn = false;
+            }
+            if (isOurTurn) {
+                System.out.println("Our turn");
+            } else {
+                System.out.println("Their turn");
+            }
+        }
+
+        for (int i = 0; i < node.getChildren().size(); i++) {
+            int score = (int) selectfn(node.getChildren().get(i));
+            if (gameType == GameType.SINGLE_PLAYER_GAME 
+                || gameType == GameType.TWO_PLAYER_SIMULTANEOUS_GAME
+                || gameType == GameType.MULTI_PLAYER_GAME) {
+                if (score > maxScore) {
+                    maxScore = score;
+                    selectedNode = node.getChildren().get(i);
+                }
+            } else if (gameType == GameType.TWO_PLAYER_ALTERNATING_GAME) {
+                // check if we are in a maximizing or minimizing node
+                if (isOurTurn) {
+                    if (score > maxScore) {
+                        maxScore = score;
+                        selectedNode = node.getChildren().get(i);
+                    }
+                } else {
+                    // their turn (min node)
+                    if (score < minScore) {
+                        minScore = score;
+                        selectedNode = node.getChildren().get(i);
+                    }
+                }
+            }
+        }
+        return selection(selectedNode);
+    }
+
+    private double selectfn(TreeNode node) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
+    {
+        return node.getUtility() + Math.sqrt(2 * Math.log(node.getParent().getVisits()/node.getVisits()));
+    }
+
+    private int expansion(TreeNode node) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
+    {
+        if (sharedStateMachine.findTerminalp(node.state)) {
+            return -1;
+        }
+        List<MachineState> nextStates = sharedStateMachine.getNextStates(node.state);
+        for (MachineState state : nextStates) {
+            TreeNode nextNode = new TreeNode(state, node);
+            node.addChild(nextNode);
+        }
+        return 0;
+    }
+
+    private int performSimulation(TreeNode node) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
+    {
+        //somehow perform random simulation to get to a final state
+        //int score = sharedStateMachine.findReward(ourRole, finalState);
+        //backpropagation(finalState, score);
+        //return score;
+        return 0;
+    }
+
+    private void backpropagation(TreeNode node, int score) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
+    {
+        node.incrementVisits();
+        node.setUtility(node.getUtility() + (double)score);
+        if(node.getParent() != null) {
+            backpropagation(node.getParent(), score);
         }
     }
 
@@ -122,235 +248,43 @@ public final class MCTS2Gamer extends SampleGamer
     public Move stateMachineSelectMove(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
         long start = System.currentTimeMillis();
-        // track the start time and the timeout time in private variables for now
-        currStartTime = start;
-        currTimeout = timeout;
+        long stopTime = timeout - minPlayTimeLeft;
+        List<Move> moves = getStateMachine().findLegals(getRole(), getCurrentState());
+        Move selection = moves.get(0);
 
-        // retreive current node from nodes encountered dictionary
-        // should probably change this
-        MachineState currState = getCurrentState();
-        Integer currStateHash = currState.hashCode();
-        TreeNode currNode = nodesEncountered.get(currStateHash);
-
-        // shouldn't be called - DELETE
-        if (currNode == null) {
-            currNode = new TreeNode(currState, stateMachine, ourRole, null);
-            nodesEncountered.put(currStateHash, currNode);
+        while (System.currentTimeMillis() < minPlayTimeLeft) {
+            MCTS(currRootNode, stopTime);
         }
-
-        lastNode = currNode;
-        List<Move> moves = currNode.legalMoves;
-
-        Move selection = bestMove(currNode); 
-
-        // finish turn and update
-        numTurnsTaken++;
-        lastMove = selection;
-
-        System.out.println("Nodes explored so far: " + nodesEncountered.size());
 
         long stop = System.currentTimeMillis();
         notifyObservers(new GamerSelectedMoveEvent(moves, selection, stop - start));
         return selection;
     }
 
-    private int minScore(Move move, TreeNode currNode, int depth, int alpha, int beta) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
-    {   
-        List<List<Move>> possibleJointMoves = currNode.legalMoveMap.get(move);
-        if (possibleJointMoves == null) {
-            possibleJointMoves = stateMachine.getLegalJointMoves(currNode.nodeState, ourRole, move);
-            currNode.legalMoveMap.put(move, possibleJointMoves);
-        }
-
-        for (int i = 0; i < possibleJointMoves.size(); i++) {
-            List<Move> jointMove = possibleJointMoves.get(i);
-            MachineState candidateState = stateMachine.findNext(jointMove, currNode.nodeState);
-
-            // create new node if one does not exist - setting the current node as parent
-            TreeNode nextNode = nodesEncountered.get(candidateState.hashCode());
-            if (nextNode == null) {
-                nextNode = new TreeNode(candidateState, stateMachine, ourRole, currNode);
-                nodesEncountered.put(candidateState.hashCode(), nextNode);
-            }
-            // make sure to set the children of a node
-            // don't currently do anything with children
-            if (!currNode.children.contains(nextNode)) {
-                currNode.children.add(nextNode);
-            }
-
-            int result = maxScore(nextNode, depth, alpha, beta);
-            beta = Math.min(beta, result);
-            if (beta <= alpha) {
-                return alpha;
-            }
-        }
-        
-        return beta;
-    }
-
-    private int maxScore(TreeNode currNode, int depth, int alpha, int beta) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
-    {   
-        if (currNode.isTerminal) {
-            int reward = stateMachine.findReward(ourRole, currNode.nodeState);
-            /*
-            // possible 
-            if (twoPlayerTurnGame) {
-                return Math.max(0, reward - stateMachine.findReward(otherRole, currNode.nodeState));
-            }
-            */
-            return reward;
-        }
-
-        if (currTimeout - System.currentTimeMillis() < minPlayTimeLeft) {
-            System.out.println("We've timed out maxScore. Time elapsed: " + (System.currentTimeMillis() - currStartTime) + " | timeout buffer: " + minPlayTimeLeft + " | time left: " + (currTimeout - System.currentTimeMillis()));
-            return currNode.getExpectedReward();
-        }
-
-        if (depth >= explorationDepth) {
-            return monteCarlo(currNode);
-        }
-
-        List<Move> moves = currNode.legalMoves;
+    private Move bestMove(Role role, MachineState state) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException 
+    {
+        List<Move> moves = getStateMachine().findLegals(role, state);
+        Move best = moves.get(0);
         int score = 0;
-        for (int i = 0; i < moves.size(); i++) {
-            int result = minScore(moves.get(i), currNode, depth + 1, alpha, beta);
-            alpha = Math.max(alpha, result);
-            if(alpha >= beta) {
-               return beta;
+        int alpha = -upperThreshold;
+        int beta = upperThreshold + 1;
+        for(int i = 0; i < moves.size(); i++) {
+            int result = 0;
+            if(result > score) {
+                score = result;
+                best = moves.get(i);
             }
         }
-        return alpha;
+        return best;
     }
 
-    private Move bestMove(TreeNode currNode) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
-    {
-        List<Move> moves = currNode.legalMoves;
-        MachineState currState = currNode.nodeState;
-        int bestScore = kMinReward;
-        Move bestMove = moves.get(0);
-        int alpha = -kMaxReward;
-        int beta = kMaxReward + 1;
-        for (int i = 0; i < moves.size(); i++) {
-            // check for timeout
-            if (currTimeout - System.currentTimeMillis() < minPlayTimeLeft) {
-                return bestMove;
-            }
-            int result = minScore(moves.get(i), currNode, 0, alpha, beta);
-            if (result > bestScore) {
-                bestScore = result;
-                bestMove = moves.get(i);
-            }
-        }
-        return bestMove;
-    }
-
-    private int monteCarlo(TreeNode currNode) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
-    {
-        TreeNode selectedNode = selection(currNode);
-        double totalScore = 0;
-        int numChargesCompleted = 0;
-        int score = 0;
-
-        for (; numChargesCompleted < numProbes && currTimeout - System.currentTimeMillis() >= minPlayTimeLeft; numChargesCompleted++) {
-            int currScore = depthCharge(currNode);
-            if (currScore == -1) {
-                break; // depth charge detected a timeout
-            } else {
-                backPropagate(selectedNode, currScore);
-            }
-            totalScore += currScore;
-        }
-        // if we have partially complete a depth charge, 
-        if (numChargesCompleted != 0) {
-            score = (int)((double)totalScore / (double)numChargesCompleted);
-        }
-
-        System.out.println("Completed " + numChargesCompleted + " of " + numProbes + " probes for a total of:  " + score + "| Updating score to: " + currNode.getExpectedReward());
-        //return score;
-        return currNode.getExpectedReward();
-    }
-
-    private int depthCharge(TreeNode currNode) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
-    {
-        if (currNode.isTerminal) {
-            int reward = stateMachine.findReward(ourRole, currNode.nodeState);
-            /*
-            // Possibly take into account the other players scores and whether it is a zero sum
-            if (twoPlayerTurnGame) {
-                int otherReward = stateMachine.findReward(otherRole, currNode.nodeState);
-                if (reward == 0 && otherReward == 100) {
-                    return -100;
-                } else {
-                    return Math.max(0, reward - otherReward);
-                }
-            }
-            */
-            return reward;
-        }
-
-        if (currTimeout - System.currentTimeMillis() < minPlayTimeLeft) {
-            return -1;
-        }
-
-        List<Move> randomJointMoves = stateMachine.getRandomJointMove(currNode.nodeState);
-        MachineState nextState = stateMachine.getNextState(currNode.nodeState, randomJointMoves);
-        TreeNode nextNode = nodesEncountered.get(nextState.hashCode());
-        if (nextNode == null) {
-            nextNode = new TreeNode(nextState, stateMachine, ourRole, currNode);
-            nodesEncountered.put(nextState.hashCode(), nextNode);
-        }
-        if (!currNode.children.contains(nextNode)) {
-            currNode.children.add(nextNode);
-        }
-
-        if (currTimeout - System.currentTimeMillis() < minPlayTimeLeft) {
-            return -1;
-        } 
-
-        return depthCharge(nextNode);
-    }
-
-    private void backPropagate(TreeNode currNode, int score) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
-    {
-        currNode.numEncounters++;
-        currNode.totalReward += score;
-        // keep going until we reach root or the last node selected (current stage)
-        if (currNode.parent != null && currNode != lastNode) {
-            backPropagate(currNode.parent, score);
-        }
-    }
-
-    // selectfn straight from notes
-    private double selectfn(TreeNode currNode) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
-    {
-        return currNode.totalReward + Math.sqrt(2 * Math.log(currNode.parent.numEncounters / currNode.numEncounters));
-    }
-
-    // selection is based directly from notes
-    private TreeNode selection(TreeNode currNode) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
-    {
-        if (currNode.numEncounters == 0) {
-            return currNode;
-        }
-        for (TreeNode child : currNode.children) {
-            if (child.numEncounters == 0) {
-                return child;
-            }
-        }
-        int score = 0;
-        TreeNode result = null;
-        for (TreeNode child : currNode.children) {
-            int newScore = (int)Math.round(selectfn(child));
-            if (newScore >= score) {
-                score = newScore;
-                result = child;
-            }
-        }
-        return result;
-    }
-
+    /* 
+     * TODO(Adi):
+     * a) Need to handle multi-player case
+     *      1. max/min nodes must be differentiated
+     *      2. expansion should create bipartite tree between 
+     *      max/min nodes
+     * 
+     * b) Need to construct tree during minimax routines
+     */ 
 }
-
-
-
-
