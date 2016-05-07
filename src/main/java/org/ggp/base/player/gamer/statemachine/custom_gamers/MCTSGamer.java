@@ -72,10 +72,6 @@ public final class MCTSGamer extends SampleGamer
         }
     }
 
-    // Hyperparameters - change based on gameplay
-    int maxLevels = 1;
-    int nProbes = 2;
-
     // Constants
     int upperThreshold = 100;
     int lowerThreshold = 0;
@@ -230,6 +226,7 @@ public final class MCTSGamer extends SampleGamer
             }
             return bestChild;
         }
+
         System.out.println("Error completing MCTS, returning null");
         return null;
     }
@@ -239,6 +236,7 @@ public final class MCTSGamer extends SampleGamer
         if (node.getVisits() == 0 || sharedStateMachine.findTerminalp(node.getState())) {
             return node;
         }
+
         for (int i = 0; i < node.getChildren().size(); i++) {
             if (node.getChildren().get(i).getVisits() == 0) {
                 return node.getChildren().get(i);
@@ -295,7 +293,6 @@ public final class MCTSGamer extends SampleGamer
 
     private int performSimulation(TreeNode node) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
-        //somehow perform random simulation to get to a final state
         TreeNode currNode = node;
         TreeNode nextNode = null;
         while (!sharedStateMachine.findTerminalp(currNode.getState())) {
@@ -306,6 +303,9 @@ public final class MCTSGamer extends SampleGamer
 
         if (currNode != null && sharedStateMachine.findTerminalp(currNode.getState())) {
             int score = sharedStateMachine.findReward(ourRole, currNode.getState());
+            if (gameType == GameType.SINGLE_PLAYER_GAME && score == 100) {
+                score = Integer.MAX_VALUE; // scale weight of winning score
+            }
             backpropagation(currNode, score);
             return score;
         } 
