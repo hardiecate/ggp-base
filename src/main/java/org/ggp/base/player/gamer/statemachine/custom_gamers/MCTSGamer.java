@@ -22,7 +22,7 @@ import org.ggp.base.util.statemachine.StateMachine;
 /**
  * MCTSGamer
  */
-public final class MCTS2Gamer extends SampleGamer
+public final class MCTSGamer extends SampleGamer
 {
     class TreeNode {
         private MachineState state;
@@ -153,7 +153,7 @@ public final class MCTS2Gamer extends SampleGamer
         
         // expand MCTS tree if we still have time
         int numSimulations = 0;
-        while (System.currentTimeMillis() < metagameStopTime - 1000) {
+        while (System.currentTimeMillis() < metagameStopTime) {
             MCTS(currRootNode, metagameStopTime);
             numSimulations++;
         }
@@ -205,8 +205,6 @@ public final class MCTS2Gamer extends SampleGamer
             List<MachineState> nextStates = sharedStateMachine.getNextStates(currRootNode.getState());
             selection = jointMoveMap.get(bestChild.getState());
         }
-
-
 
         long stop = System.currentTimeMillis();
         notifyObservers(new GamerSelectedMoveEvent(moves, selection, stop - start));
