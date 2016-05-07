@@ -199,11 +199,14 @@ public final class MCTS2Gamer extends SampleGamer
             }
         }
         System.out.println("Simulations completed: " + numDepthCharges);
+        System.out.println("Expected utility: " + currRootNode.getUtility());
 
         if (bestChild != null) {
             List<MachineState> nextStates = sharedStateMachine.getNextStates(currRootNode.getState());
             selection = jointMoveMap.get(bestChild.getState());
         }
+
+
 
         long stop = System.currentTimeMillis();
         notifyObservers(new GamerSelectedMoveEvent(moves, selection, stop - start));
