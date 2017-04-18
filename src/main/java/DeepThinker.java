@@ -38,12 +38,13 @@ public class DeepThinker extends StateMachineGamer {
 		MachineState state = getCurrentState();
 		Role role = getRole();
 		List<Move> moves = machine.getLegalMoves(state, role);
-
+		System.out.println("here's a new one");
 		Move action =  moves.get(0);
 		int score = 0;
-		for (int i=0; i<moves.size(); i++) {
-			  int alpha = machine.getGoal(state, role);
-			  int beta = machine.getGoal(state, role);
+		System.out.println("moves looks like " + moves.toString());
+		for (int i=0; i < moves.size(); i++) {
+			  int alpha = 0;
+			  int beta = 100;
 			  int result = minscore(role, moves.get(i), simulate(state, moves.get(i), machine), machine, alpha, beta);
 		      if (result==100) {
 		    	   return moves.get(i);
@@ -53,7 +54,8 @@ public class DeepThinker extends StateMachineGamer {
 		    	   	action = moves.get(i);
 		      }
 		  }
-		  return action;
+		System.out.println("final action is " + action.toString());
+		return action;
 	}
 
 	public int maxscore(Role role, MachineState state, StateMachine machine, int alpha, int beta) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
@@ -91,7 +93,7 @@ public class DeepThinker extends StateMachineGamer {
 				moves.add(action);
 			}
 			MachineState newstate = machine.getNextState(state, moves);
-			int result = maxscore(role, state, machine, alpha, beta);
+			int result = maxscore(role, newstate, machine, alpha, beta);
 			beta = Math.min(beta, result);
 			if (beta <= alpha) {
 				return alpha;
@@ -111,6 +113,7 @@ public class DeepThinker extends StateMachineGamer {
 	public MachineState findNext(Move move, MachineState state, StateMachine machine) throws TransitionDefinitionException {
 		List<Move> moves = new ArrayList<Move>();
 		moves.add(move);
+		System.out.println("move content says " + move.toString());
 		return machine.getNextState(state, moves);
 	}
 
