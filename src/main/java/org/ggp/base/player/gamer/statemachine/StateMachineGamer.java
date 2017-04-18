@@ -180,7 +180,6 @@ public abstract class StateMachineGamer extends Gamer
 		{
 			stateMachine = getInitialStateMachine();
 			stateMachine.initialize(getMatch().getGame().getRules());
-
 			currentState = stateMachine.getInitialState();
 
 			role = stateMachine.getRoleFromConstant(getRoleName());

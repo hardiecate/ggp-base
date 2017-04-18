@@ -144,6 +144,28 @@ public class FailsafeStateMachine extends StateMachine
     }
 
     @Override
+    public List<Move> findActions(Role role) throws MoveDefinitionException {
+        if(theBackingMachine == null)
+            return null;
+
+        try {
+            return theBackingMachine.findActions(role);
+        } catch(MoveDefinitionException me) {
+            throw me;
+        } catch(Exception e) {
+            failGracefully(e, null);
+        } catch(OutOfMemoryError e) {
+            throw e;
+        } catch(ThreadDeath d) {
+            throw d;
+        } catch(Error e) {
+            failGracefully(null, e);
+        }
+
+        return findActions(role);
+    }
+
+    @Override
     public List<Move> getLegalMoves(MachineState state, Role role) throws MoveDefinitionException {
         if(theBackingMachine == null)
             return null;
@@ -339,9 +361,9 @@ public class FailsafeStateMachine extends StateMachine
         try {
             return theBackingMachine.performDepthCharge(state, theDepth);
         } catch (TransitionDefinitionException te) {
-        	throw te;
+            throw te;
         } catch (MoveDefinitionException me) {
-        	throw me;
+            throw me;
         } catch(Exception e) {
             failGracefully(e, null);
         } catch(ThreadDeath d) {
@@ -364,11 +386,11 @@ public class FailsafeStateMachine extends StateMachine
             theBackingMachine.getAverageDiscountedScoresFromRepeatedDepthCharges(state, avgScores, avgDepth, discountFactor, repetitions);
             return;
         } catch (TransitionDefinitionException te) {
-        	throw te;
+            throw te;
         } catch (MoveDefinitionException me) {
-        	throw me;
+            throw me;
         } catch (GoalDefinitionException ge) {
-        	throw ge;
+            throw ge;
         } catch(Exception e) {
             failGracefully(e, null);
         } catch(ThreadDeath d) {
