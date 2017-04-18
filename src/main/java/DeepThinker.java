@@ -1,4 +1,3 @@
-import java.util.ArrayList;
 import java.util.List;
 
 import org.ggp.base.apps.player.Player;
@@ -37,20 +36,20 @@ public class DeepThinker extends StateMachineGamer {
 		StateMachine machine = getStateMachine();
 		MachineState state = getCurrentState();
 		Role role = getRole();
-		List<Move> moves = machine.getLegalMoves(state, role);
+		List<List<Move>> outcomes = machine.getLegalJointMoves(state);
 
-		Move action =  moves.get(0);
+		Move action = null;
 		int score = 0;
-		for (int i=0; i<moves.size(); i++) {
-			  int alpha = machine.getGoal(state, role);
-			  int beta = machine.getGoal(state, role);
-			  int result = maxscore(role, simulate(state, moves.get(i), machine), machine, alpha, beta);
+		for (int i=0; i<outcomes.size(); i++) {
+			  int alpha = 0;
+			  int beta = 100;
+			  int result = maxscore(role, simulate(state, outcomes.get(i), machine), machine, alpha, beta);
 		      if (result==100) {
-		    	   return moves.get(i);
+		    	   return outcomes.get(i).get(0);
 		      }
 		      if (result>score) {
 		    	   	score = result;
-		    	   	action = moves.get(i);
+		    	   	action = outcomes.get(i).get(0);
 		      }
 		  }
 		  return action;
@@ -60,14 +59,25 @@ public class DeepThinker extends StateMachineGamer {
 		if (machine.isTerminal(state)) {
 			return machine.getGoal(state, role);
 		}
-		List<Move> actions = machine.getLegalMoves(state, role);
-		for (int i = 0; i < actions.size(); i++) {
-			int result = minscore(role, actions.get(i), simulate(state, actions.get(i), machine), machine, alpha, beta);
+
+		List<List<Move>> outcomes = machine.getLegalJointMoves(state);
+		for (int i = 0; i < outcomes.size(); i++) {
+			int result = minscore(role, outcomes.get(i).get(0), simulate(state, outcomes.get(i), machine), machine, alpha, beta);
 			alpha = Math.max(alpha, result);
 			if (alpha >= beta) {
 				return beta;
 			}
 		}
+
+//		List<Move> actions = machine.getLegalMoves(state, role);
+//		for (int i = 0; i < actions.size(); i++) {
+//
+//			int result = minscore(role, actions.get(i), simulate(state, actions, machine), machine, alpha, beta);
+//			alpha = Math.max(alpha, result);
+//			if (alpha >= beta) {
+//				return beta;
+//			}
+//		}
 		return alpha;
 	}
 
@@ -79,16 +89,13 @@ public class DeepThinker extends StateMachineGamer {
 				opponent = r;
 			}
 		}
-		List<Move> actions = machine.getLegalMoves(state, opponent);
-		for (int i = 0; i < actions.size(); i++) {
-			Move move;
-			if (role == roles.get(0)) {
-				move = action;
-			} else {
-				move = actions.get(i);
-			}
-			MachineState newstate = findNext(move, state, machine);
-			int result = maxscore(role, state, machine, alpha, beta);
+
+
+		List<List<Move>> outcomes = machine.getLegalJointMoves(state, opponent, action);
+		for (int i = 0; i < outcomes.size(); i++) {
+			List<Move> movesPerPlayer = outcomes.get(i);
+			MachineState newstate = findNext(movesPerPlayer, state, machine);
+			int result = maxscore(role, newstate, machine, alpha, beta);
 			beta = Math.min(beta, result);
 			if (beta <= alpha) {
 				return alpha;
@@ -97,17 +104,15 @@ public class DeepThinker extends StateMachineGamer {
 		return beta;
 	}
 
-	public MachineState simulate(MachineState state, Move move, StateMachine machine) throws TransitionDefinitionException{
-		if (move == null) {
+	public MachineState simulate(MachineState state, List<Move> moves, StateMachine machine) throws TransitionDefinitionException{
+		if (moves == null) {
 			return state;
 		} else {
-			return findNext(move, state, machine);
+			return machine.getNextState(state, moves);
 		}
 	}
 
-	public MachineState findNext(Move move, MachineState state, StateMachine machine) throws TransitionDefinitionException {
-		List<Move> moves = new ArrayList<Move>();
-		moves.add(move);
+	public MachineState findNext(List<Move> moves, MachineState state, StateMachine machine) throws TransitionDefinitionException {
 		return machine.getNextState(state, moves);
 	}
 
