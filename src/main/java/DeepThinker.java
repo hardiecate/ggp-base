@@ -44,7 +44,7 @@ public class DeepThinker extends StateMachineGamer {
 		for (int i=0; i<moves.size(); i++) {
 			  int alpha = machine.getGoal(state, role);
 			  int beta = machine.getGoal(state, role);
-			  int result = maxscore(role, simulate(state, moves.get(i), machine), machine, alpha, beta);
+			  int result = minscore(role, moves.get(i), simulate(state, moves.get(i), machine), machine, alpha, beta);
 		      if (result==100) {
 		    	   return moves.get(i);
 		      }
@@ -82,12 +82,15 @@ public class DeepThinker extends StateMachineGamer {
 		List<Move> actions = machine.getLegalMoves(state, opponent);
 		for (int i = 0; i < actions.size(); i++) {
 			Move move;
+			List<Move> moves = new ArrayList<Move>();
 			if (role == roles.get(0)) {
-				move = action;
+				moves.add(action);
+				moves.add(actions.get(i));
 			} else {
-				move = actions.get(i);
+				moves.add(actions.get(i));
+				moves.add(action);
 			}
-			MachineState newstate = findNext(move, state, machine);
+			MachineState newstate = machine.getNextState(state, moves);
 			int result = maxscore(role, state, machine, alpha, beta);
 			beta = Math.min(beta, result);
 			if (beta <= alpha) {
