@@ -56,6 +56,9 @@ public class DeepThinker extends StateMachineGamer {
 	}
 
 	public int maxscore(Role role, MachineState state, StateMachine machine, int alpha, int beta) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
+		System.out.println("Role is " + role);
+		System.out.println("Alpha is " + alpha);
+		System.out.println("Beta is " + beta);
 		if (machine.isTerminal(state)) {
 			return machine.getGoal(state, role);
 		}
