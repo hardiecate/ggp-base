@@ -15,9 +15,9 @@ import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
-// Makes a deep move
+// Makes a alphabeta move
 
-public class DeepThinker extends StateMachineGamer {
+public class AlphabetaThinker extends StateMachineGamer {
 
 	Player p;
 
@@ -132,7 +132,7 @@ public class DeepThinker extends StateMachineGamer {
 	@Override
 	public String getName() {
 		// TODO Auto-generated method stub
-		return "DeepThinker";
+		return "AlphabetaThinker";
 	}
 
 }

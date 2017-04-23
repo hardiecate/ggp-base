@@ -58,6 +58,10 @@ public class MinimaxThinker extends StateMachineGamer {
 	}
 
 	public int minscore(Role myRole, Move myAction, MachineState state, StateMachine machine) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
+		if (machine.isTerminal(state)) {
+			return machine.getGoal(state, myRole);
+		}
+
 		List<Role> opponents = findOpponents(myRole, machine);
 		int score = 100;
 		for (Role opponent: opponents) {

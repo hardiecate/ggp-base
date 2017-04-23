@@ -180,10 +180,6 @@ public abstract class StateMachineGamer extends Gamer
 		{
 			stateMachine = getInitialStateMachine();
 			stateMachine.initialize(getMatch().getGame().getRules());
-<<<<<<< HEAD
-
-=======
->>>>>>> hardiecate/master
 			currentState = stateMachine.getInitialState();
 
 			role = stateMachine.getRoleFromConstant(getRoleName());
