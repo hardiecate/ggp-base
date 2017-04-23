@@ -24,17 +24,100 @@ import com.google.common.collect.ImmutableMap;
  */
 public abstract class StateMachine
 {
+	// ============================================
+    // These methods (through findterminalp) layer over other methods
+	// in order to align with notation in the notes for Stanford's CS227B course
+
+	/**
+	 * Returns the list of roles for the game.
+	 */
+	public List<Role> findRoles()
+    {
+    	return getRoles();
+    }
+
+	/**
+	 * Returns a list of all possible actions the role
+	 * can perform in the game, regardless of legality at any
+	 * particular state in the game.
+     * @throws MoveDefinitionException if the role has no possible moves. This indicates
+     * an error in either the game description or the StateMachine implementation.
+	 */
+	public abstract List<Move> findActions(Role role) throws MoveDefinitionException;
+
+	/**
+	 * Returns the initial state of the game.
+	 */
+    public MachineState findInits()
+    {
+    	return getInitialState();
+    }
+
+    /**
+     * Returns the first action that is legal for the specified role
+     * in the specified state.
+     * @throws MoveDefinitionException if the role has no legal moves. This indicates
+     * an error in either the game description or the StateMachine implementation.
+     */
+    public Move findLegalx(Role role, MachineState state) throws MoveDefinitionException
+    {
+    	return getLegalMoves(state, role).get(0);
+    }
+
+    /**
+     * Returns a list of all legal actions for the specified role in the specified state.
+     * @throws MoveDefinitionException if the role has no legal moves. This indicates
+     * an error in either the game description or the StateMachine implementation.
+     */
+    public List<Move> findLegals(Role role, MachineState state) throws MoveDefinitionException
+    {
+    	return getLegalMoves(state, role);
+    }
+
+    // order of moves in moves must correspond exactly to the order of roles
+    // in list return by findroles
+    /**
+     * Returns the state that results from the joint move given by moves in the specified state.
+     * The order of moves in moves must correspond exactly to the order of roles in the list
+     * returned by findroles().
+     * @throws TransitionDefinitionException
+     */
+    public MachineState findNext(List<Move> moves, MachineState state) throws TransitionDefinitionException
+    {
+    	return getNextState(state, moves);
+    }
+
+    /**
+     * Returns the goal value for the specified role in the specified state.
+     * @throws GoalDefinitionException if there is no goal value or more than one
+     * goal value for the given role in the given state. If this occurs when this
+     * is called on a terminal state, this indicates an error in either the game
+     * description or the StateMachine implementation.
+     */
+    public int findReward(Role role, MachineState state) throws GoalDefinitionException
+    {
+    	return getGoal(state, role);
+    }
+
+    /**
+     * Returns true if and only if the given state is a terminal state (i.e. the
+     * game is over).
+     */
+    public boolean findTerminalp(MachineState state)
+    {
+    	return isTerminal(state);
+    }
     // ============================================
     //          Stubs for implementations
     // ============================================
     //  The following methods are required for a valid
     // state machine implementation.
-	/**
-	 * Initializes the StateMachine to describe the given game rules.
-	 * <p>
-	 * This method should only be called once, and it should be called before any
-	 * other methods on the StateMachine.
-	 */
+    /**
+     * Initializes the StateMachine to describe the given game rules.
+     * <p>
+     * This method should only be called once, and it should be called before any
+     * other methods on the StateMachine.
+     */
     public abstract void initialize(List<Gdl> description);
     /**
      * Returns the goal value for the given role in the given state. Goal values
@@ -100,7 +183,6 @@ public abstract class StateMachine
     public Move getMoveFromTerm(GdlTerm term) {
         return new Move(term);
     }
-
 
     // ============================================
     //          Stubs for advanced methods
@@ -257,7 +339,7 @@ public abstract class StateMachine
     public Map<Role, Integer> getRoleIndices()
     {
         if (roleIndices == null) {
-        	ImmutableMap.Builder<Role, Integer> roleIndicesBuilder = ImmutableMap.builder();
+            ImmutableMap.Builder<Role, Integer> roleIndicesBuilder = ImmutableMap.builder();
             List<Role> roles = getRoles();
             for (int i = 0; i < roles.size(); i++) {
                 roleIndicesBuilder.put(roles.get(i), i);
@@ -378,23 +460,23 @@ public abstract class StateMachine
     }
 
     public void getAverageDiscountedScoresFromRepeatedDepthCharges(final MachineState state, final double[] avgScores, final double[] avgDepth, final double discountFactor, final int repetitions) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
-    	avgDepth[0] = 0;
-    	for (int j = 0; j < avgScores.length; j++) {
-    		avgScores[j] = 0;
-    	}
-    	final int[] depth = new int[1];
-    	for (int i = 0; i < repetitions; i++) {
-    		MachineState stateForCharge = state.clone();
-    		stateForCharge = performDepthCharge(stateForCharge, depth);
-    		avgDepth[0] += depth[0];
-    		final double accumulatedDiscountFactor = Math.pow(discountFactor, depth[0]);
-    		for (int j = 0; j < avgScores.length; j++) {
-    			avgScores[j] += getGoal(stateForCharge, getRoles().get(j)) * accumulatedDiscountFactor;
-    		}
-    	}
-    	avgDepth[0] /= repetitions;
-    	for (int j = 0; j < avgScores.length; j++) {
-    		avgScores[j] /= repetitions;
-    	}
+        avgDepth[0] = 0;
+        for (int j = 0; j < avgScores.length; j++) {
+            avgScores[j] = 0;
+        }
+        final int[] depth = new int[1];
+        for (int i = 0; i < repetitions; i++) {
+            MachineState stateForCharge = state.clone();
+            stateForCharge = performDepthCharge(stateForCharge, depth);
+            avgDepth[0] += depth[0];
+            final double accumulatedDiscountFactor = Math.pow(discountFactor, depth[0]);
+            for (int j = 0; j < avgScores.length; j++) {
+                avgScores[j] += getGoal(stateForCharge, getRoles().get(j)) * accumulatedDiscountFactor;
+            }
+        }
+        avgDepth[0] /= repetitions;
+        for (int j = 0; j < avgScores.length; j++) {
+            avgScores[j] /= repetitions;
+        }
     }
 }
