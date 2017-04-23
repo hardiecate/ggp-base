@@ -38,6 +38,11 @@ public class DeepThinker extends StateMachineGamer {
 		Role role = getRole();
 		List<List<Move>> outcomes = machine.getLegalJointMoves(state);
 
+		System.out.println("machine is " + machine);
+		System.out.println("state is " + state);
+		System.out.println("role is " + role);
+		System.out.println("outcomes is " + outcomes);
+
 		Move action = null;
 		int score = 0;
 		for (int i=0; i<outcomes.size(); i++) {
@@ -51,14 +56,11 @@ public class DeepThinker extends StateMachineGamer {
 		    	   	score = result;
 		    	   	action = outcomes.get(i).get(0);
 		      }
-		  }
-		  return action;
+		}
+		return action;
 	}
 
 	public int maxscore(Role role, MachineState state, StateMachine machine, int alpha, int beta) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
-		System.out.println("Role is " + role);
-		System.out.println("Alpha is " + alpha);
-		System.out.println("Beta is " + beta);
 		if (machine.isTerminal(state)) {
 			return machine.getGoal(state, role);
 		}
