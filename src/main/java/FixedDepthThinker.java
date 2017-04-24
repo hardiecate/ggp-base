@@ -15,11 +15,12 @@ import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
-// Makes a minimax move
+// Makes a fixed depth without heuristics move
 
-public class MinimaxThinker extends StateMachineGamer {
+public class FixedDepthThinker extends StateMachineGamer {
 
 	Player p;
+	int limit = 2;
 
 	@Override
 	public StateMachine getInitialStateMachine() {
@@ -46,9 +47,10 @@ public class MinimaxThinker extends StateMachineGamer {
 		List<List<Move>> myTurnLegalMoves = machine.getLegalJointMoves(state);
 		Move move = myTurnLegalMoves.get(0).get(0);
 		int score = 0;
+		int level = 0;
 		for (int i = 0; i < myTurnLegalMoves.size(); i++) {
 			List<Move> myTurnMove = myTurnLegalMoves.get(i);
-			int result = minscore(role, myTurnMove.get(0), machine.getNextState(state, myTurnMove), machine);
+			int result = minscore(role, myTurnMove.get(0), machine.getNextState(state, myTurnMove), machine, level);
 			if (result > score) {
 				score = result;
 				move = myTurnMove.get(0);
@@ -57,7 +59,7 @@ public class MinimaxThinker extends StateMachineGamer {
 		return move;
 	}
 
-	public int minscore(Role myRole, Move myAction, MachineState state, StateMachine machine) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
+	public int minscore(Role myRole, Move myAction, MachineState state, StateMachine machine, int level) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
 		if (machine.isTerminal(state)) {
 			return machine.getGoal(state, myRole);
 		}
@@ -71,7 +73,7 @@ public class MinimaxThinker extends StateMachineGamer {
 				for (int i=0; i<oppoTurnLegalMoves.size(); i++){
 					List<Move> legalTurn = oppoTurnLegalMoves.get(i);
 					MachineState newstate = machine.getNextState(state, legalTurn);
-					int result = maxscore(myRole, newstate, machine);
+					int result = maxscore(myRole, newstate, machine, level + 1);
 					if (result < score) score = result;
 				}
 			}
@@ -88,16 +90,18 @@ public class MinimaxThinker extends StateMachineGamer {
 		return opponents;
 	}
 
-	public int maxscore(Role role, MachineState state, StateMachine machine) throws GoalDefinitionException, TransitionDefinitionException, MoveDefinitionException {
+	public int maxscore(Role role, MachineState state, StateMachine machine, int level) throws GoalDefinitionException, TransitionDefinitionException, MoveDefinitionException {
 		if (machine.isTerminal(state)) {
 			return machine.getGoal(state, role);
 		}
+		if (level >= limit) return 0;
 		List<List<Move>> myTurnLegalMoves = machine.getLegalJointMoves(state);
 		int score = 0;
 
 		for (int i = 0; i < myTurnLegalMoves.size(); i++) {
 			List<Move> myTurnMove = myTurnLegalMoves.get(i);
-			int result = minscore(role, myTurnMove.get(0), machine.getNextState(state, myTurnMove), machine);
+			int result = minscore(role, myTurnMove.get(0), machine.getNextState(state, myTurnMove), machine, level);
+			if (result == 100) return result;
 			if (result > score) {
 				score = result;
 			}
@@ -126,7 +130,7 @@ public class MinimaxThinker extends StateMachineGamer {
 	@Override
 	public String getName() {
 		// TODO Auto-generated method stub
-		return "MinimaxThinker";
+		return "FixedDepthThinker";
 	}
 
 }
