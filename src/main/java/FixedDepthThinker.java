@@ -44,8 +44,8 @@ public class FixedDepthThinker extends StateMachineGamer {
 		MachineState state = getCurrentState();
 		Role role = getRole();
 
-		System.out.println("We have " + timeout + " units to play.");
-		// FOR NOW, WE ARE ASSUMING THAT TIMOUT HASN"T BEEN PRECALCULATED
+
+		// FOR NOW, WE ARE STOPPING WITH ONE SECOND LEFT
 		timeout = timeout - 1000;
 
 		return bestmove(role, state, machine, timeout);
@@ -81,7 +81,7 @@ public class FixedDepthThinker extends StateMachineGamer {
 			for (Move oppoMove: oppoLegalMoves) {
 				long elapsed = System.currentTimeMillis();
 			    if (elapsed >= timeOut) {
-			        break;
+			        return score;
 			    }
 				List<List<Move>> oppoTurnLegalMoves = machine.getLegalJointMoves(state, opponent, oppoMove);
 				for (int i=0; i<oppoTurnLegalMoves.size(); i++){
