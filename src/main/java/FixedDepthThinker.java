@@ -20,7 +20,7 @@ import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 public class FixedDepthThinker extends StateMachineGamer {
 
 	Player p;
-	int limit = 2;
+	int limit = 1;
 
 	@Override
 	public StateMachine getInitialStateMachine() {
@@ -65,6 +65,7 @@ public class FixedDepthThinker extends StateMachineGamer {
 		}
 
 		List<Role> opponents = findOpponents(myRole, machine);
+		if (level >= limit) return oppoProximity(opponents, state, machine);
 		int score = 100;
 		for (Role opponent: opponents) {
 			List<Move> oppoLegalMoves = machine.getLegalMoves(state, opponent);
@@ -94,7 +95,7 @@ public class FixedDepthThinker extends StateMachineGamer {
 		if (machine.isTerminal(state)) {
 			return machine.getGoal(state, role);
 		}
-		if (level >= limit) return 0;
+		//if (level >= limit) return evalfn(role, state, machine);
 		List<List<Move>> myTurnLegalMoves = machine.getLegalJointMoves(state);
 		int score = 0;
 
@@ -108,6 +109,32 @@ public class FixedDepthThinker extends StateMachineGamer {
 		}
 		return score;
 	}
+
+	public int oppoProximity(List<Role> opponents, MachineState state, StateMachine machine) throws GoalDefinitionException {
+		double score = 0.0;
+		for (Role opponent: opponents) {
+			score += machine.getGoal(state, opponent);
+		}
+		return 100 - (int)(score / opponents.size());
+	}
+
+	public int evalfn(Role role, MachineState state, StateMachine machine) throws MoveDefinitionException, GoalDefinitionException {
+		//return 0; // for non heuristics
+		//return mobility(role, state, machine); // for mobility heuristic
+		//return focus(role, state, machine); // for focus heuristic
+		return machine.getGoal(state, role); // for simple goal proximity
+	}
+
+	public int mobility(Role role, MachineState state, StateMachine machine) throws MoveDefinitionException {
+		List<Move> actions = machine.getLegalMoves(state, role);
+		List<Move> feasibles = machine.findActions(role);
+		return (int)((double)actions.size()/(double)feasibles.size() * 100);
+	}
+
+	public int focus(Role role, MachineState state, StateMachine machine) throws MoveDefinitionException {
+		return 100 - mobility(role, state, machine);
+	}
+
 
 	@Override
 	public void stateMachineStop() {
