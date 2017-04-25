@@ -65,7 +65,7 @@ public class FixedDepthThinker extends StateMachineGamer {
 		}
 
 		List<Role> opponents = findOpponents(myRole, machine);
-		if (level >= limit) return oppoProximity(opponents, state, machine);
+		//if (level >= limit) return oppoProximity(opponents, state, machine);
 		int score = 100;
 		for (Role opponent: opponents) {
 			List<Move> oppoLegalMoves = machine.getLegalMoves(state, opponent);
@@ -95,7 +95,7 @@ public class FixedDepthThinker extends StateMachineGamer {
 		if (machine.isTerminal(state)) {
 			return machine.getGoal(state, role);
 		}
-		//if (level >= limit) return evalfn(role, state, machine);
+		if (level >= limit) return evalfn(role, state, machine);
 		List<List<Move>> myTurnLegalMoves = machine.getLegalJointMoves(state);
 		int score = 0;
 
@@ -122,7 +122,8 @@ public class FixedDepthThinker extends StateMachineGamer {
 		//return 0; // for non heuristics
 		//return mobility(role, state, machine); // for mobility heuristic
 		//return focus(role, state, machine); // for focus heuristic
-		return machine.getGoal(state, role); // for simple goal proximity
+		//return machine.getGoal(state, role); // for simple goal proximity
+		return (int)(0.5 * machine.getGoal(state, role) + 0.5 * mobility(role, state, machine));
 	}
 
 	public int mobility(Role role, MachineState state, StateMachine machine) throws MoveDefinitionException {
