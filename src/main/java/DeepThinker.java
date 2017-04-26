@@ -20,18 +20,24 @@ import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 public class DeepThinker extends StateMachineGamer {
 
 	Player p;
-	int limit = 1;
+	int limit = 8;
+	int pregame;
 
 	@Override
 	public StateMachine getInitialStateMachine() {
 		return new CachedStateMachine(new ProverStateMachine());
 	}
 
+
+	// This is where the pre-game calculations are done.
 	@Override
 	public void stateMachineMetaGame(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
-		// TODO Auto-generated method stub
-
+		timeout = timeout - 1000;
+	    while (System.currentTimeMillis() < timeout) {
+	    	pregame++;
+	    }
+	    return;
 	}
 
 	@Override
@@ -40,17 +46,22 @@ public class DeepThinker extends StateMachineGamer {
 		StateMachine machine = getStateMachine();
 		MachineState state = getCurrentState();
 		Role role = getRole();
-		return bestmove(role, state, machine);
+
+		// FOR NOW, WE ARE STOPPING WITH ONE SECOND LEFT
+		timeout = timeout - 1000;
+
+		return bestmove(role, state, machine, timeout);
 	}
 
-	public Move bestmove(Role role, MachineState state, StateMachine machine) throws GoalDefinitionException, TransitionDefinitionException, MoveDefinitionException {
+	public Move bestmove(Role role, MachineState state, StateMachine machine, long timeOut) throws GoalDefinitionException, TransitionDefinitionException, MoveDefinitionException {
+
 		List<List<Move>> myTurnLegalMoves = machine.getLegalJointMoves(state);
 		Move move = myTurnLegalMoves.get(0).get(0);
 		int score = 0;
 		int level = 0;
 		for (int i = 0; i < myTurnLegalMoves.size(); i++) {
 			List<Move> myTurnMove = myTurnLegalMoves.get(i);
-			int result = minscore(role, myTurnMove.get(0), machine.getNextState(state, myTurnMove), machine, level);
+			int result = minscore(role, myTurnMove.get(0), machine.getNextState(state, myTurnMove), machine, level, timeOut);
 			if (result > score) {
 				score = result;
 				move = myTurnMove.get(0);
@@ -59,7 +70,7 @@ public class DeepThinker extends StateMachineGamer {
 		return move;
 	}
 
-	public int minscore(Role myRole, Move myAction, MachineState state, StateMachine machine, int level) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
+	public int minscore(Role myRole, Move myAction, MachineState state, StateMachine machine, int level, long timeOut) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
 		if (machine.isTerminal(state)) {
 			return machine.getGoal(state, myRole);
 		}
@@ -70,11 +81,15 @@ public class DeepThinker extends StateMachineGamer {
 		for (Role opponent: opponents) {
 			List<Move> oppoLegalMoves = machine.getLegalMoves(state, opponent);
 			for (Move oppoMove: oppoLegalMoves) {
+				long elapsed = System.currentTimeMillis();
+			    if (elapsed >= timeOut) {
+			        return score;
+			    }
 				List<List<Move>> oppoTurnLegalMoves = machine.getLegalJointMoves(state, opponent, oppoMove);
 				for (int i=0; i<oppoTurnLegalMoves.size(); i++){
 					List<Move> legalTurn = oppoTurnLegalMoves.get(i);
 					MachineState newstate = machine.getNextState(state, legalTurn);
-					int result = maxscore(myRole, newstate, machine, level + 1);
+					int result = maxscore(myRole, newstate, machine, level + 1, timeOut);
 					if (result < score) score = result;
 				}
 			}
@@ -91,7 +106,7 @@ public class DeepThinker extends StateMachineGamer {
 		return opponents;
 	}
 
-	public int maxscore(Role role, MachineState state, StateMachine machine, int level) throws GoalDefinitionException, TransitionDefinitionException, MoveDefinitionException {
+	public int maxscore(Role role, MachineState state, StateMachine machine, int level, long timeOut) throws GoalDefinitionException, TransitionDefinitionException, MoveDefinitionException {
 		if (machine.isTerminal(state)) {
 			return machine.getGoal(state, role);
 		}
@@ -101,7 +116,7 @@ public class DeepThinker extends StateMachineGamer {
 
 		for (int i = 0; i < myTurnLegalMoves.size(); i++) {
 			List<Move> myTurnMove = myTurnLegalMoves.get(i);
-			int result = minscore(role, myTurnMove.get(0), machine.getNextState(state, myTurnMove), machine, level);
+			int result = minscore(role, myTurnMove.get(0), machine.getNextState(state, myTurnMove), machine, level, timeOut);
 			if (result == 100) return result;
 			if (result > score) {
 				score = result;
