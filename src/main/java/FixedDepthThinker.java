@@ -21,6 +21,8 @@ public class FixedDepthThinker extends StateMachineGamer {
 
 	Player p;
 	int limit = 8;
+	double w1,w2,last_player_score;
+	boolean restrict;
 
 	@Override
 	public StateMachine getInitialStateMachine() {
@@ -32,9 +34,13 @@ public class FixedDepthThinker extends StateMachineGamer {
 	@Override
 	public void stateMachineMetaGame(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
-
-
-
+		// StateMachine machine = getStateMachine();
+		// machine.initialize(getMatch().getGame().getRules());
+		// Role role = getRole();
+		// MachineState state = machine.getInitialState();
+		w1 = w2 = .5;
+		last_opp_score = 100; 
+		restrict = true;
 	}
 
 	@Override
@@ -133,10 +139,26 @@ public class FixedDepthThinker extends StateMachineGamer {
 
 	public int evalfn(Role role, MachineState state, StateMachine machine) throws MoveDefinitionException, GoalDefinitionException {
 		//return 0; // for non heuristics
-		//return mobility(role, state, machine); // for mobility heuristic
-		//return focus(role, state, machine); // for focus heuristic
-		//return machine.getGoal(state, role); // for simple goal proximity
-		return (int)(0.5 * machine.getGoal(state, role) + 0.5 * mobility(role, state, machine));
+		double player = (double)machine.getGoal(state, role); // for simple goal proximity
+		double opp = (double)oppoProximity(findOpponents(role, machine), state, machine);
+		double f1 = (double)mobility(role, state, machine); // for mobility heuristic
+		double f2 = (double)focus(role, state, machine); // for focus heuristic
+		double w1,w2;
+		//update strategy based on whether your score is going up or down from last move
+		if (opp > player) {
+			if (player < last_player_score) {
+				restrict = !restrict;
+			}
+			last_player_score = player;
+			if (restrict) {
+				w2 = w1 * .5;
+				w1 = 1.0 - w2;
+			} else {
+				w1 = w2 * .5;
+				w2 = 1.0 - w1;
+			}
+		}
+		return (int)(w1*f1 + w2*f2);
 	}
 
 	public int mobility(Role role, MachineState state, StateMachine machine) throws MoveDefinitionException {
