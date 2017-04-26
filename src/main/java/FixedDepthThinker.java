@@ -39,7 +39,7 @@ public class FixedDepthThinker extends StateMachineGamer {
 		// Role role = getRole();
 		// MachineState state = machine.getInitialState();
 		w1 = w2 = .5;
-		last_opp_score = 100; 
+		last_player_score = 0; 
 		restrict = true;
 	}
 
