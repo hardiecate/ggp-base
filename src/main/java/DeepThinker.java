@@ -15,12 +15,18 @@ import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
-// Makes a fixed depth without heuristics move
+// Deep thinker
+// use start time
+// use time: opponent's turn
+// use multithread
+// alquerque: use higher getgoal heuristics
+// battleofnumbers:heuristics. use mobility and opponent focus an goal.
+// breadth-first.
 
 public class DeepThinker extends StateMachineGamer {
 
 	Player p;
-	int limit = 8;
+	int limit = 3;
 	int pregame;
 
 	@Override
@@ -34,9 +40,9 @@ public class DeepThinker extends StateMachineGamer {
 	public void stateMachineMetaGame(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
 		timeout = timeout - 1000;
-	    while (System.currentTimeMillis() < timeout) {
-	    	pregame++;
-	    }
+	    //while (System.currentTimeMillis() < timeout) {
+	    //	pregame++;
+	    //}
 	    return;
 	}
 
@@ -48,7 +54,7 @@ public class DeepThinker extends StateMachineGamer {
 		Role role = getRole();
 
 		// FOR NOW, WE ARE STOPPING WITH ONE SECOND LEFT
-		timeout = timeout - 1000;
+		timeout = timeout - 2000;
 
 		return bestmove(role, state, machine, timeout);
 	}
@@ -138,7 +144,7 @@ public class DeepThinker extends StateMachineGamer {
 		//return mobility(role, state, machine); // for mobility heuristic
 		//return focus(role, state, machine); // for focus heuristic
 		//return machine.getGoal(state, role); // for simple goal proximity
-		return (int)(0.5 * machine.getGoal(state, role) + 0.5 * mobility(role, state, machine));
+		return (int)(0.8 * machine.getGoal(state, role) + 0.2 * mobility(role, state, machine));
 	}
 
 	public int mobility(Role role, MachineState state, StateMachine machine) throws MoveDefinitionException {
