@@ -20,13 +20,19 @@ import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 public class FixedDepthThinker extends StateMachineGamer {
 
 	Player p;
-	int limit = 8;
-	double w1,w2,last_player_score;
-	boolean restrict;
+	int limit = 1;
+	double w1 = .5;
+	double w2 = .5;
+	double last_player_score = 0;
+	boolean restrict = true;
+	int timeoutPadding = 2000;
+	boolean wasTimedOut = false;
+
 
 	@Override
 	public StateMachine getInitialStateMachine() {
 		return new CachedStateMachine(new ProverStateMachine());
+
 	}
 
 
@@ -38,9 +44,28 @@ public class FixedDepthThinker extends StateMachineGamer {
 		// machine.initialize(getMatch().getGame().getRules());
 		// Role role = getRole();
 		// MachineState state = machine.getInitialState();
-		w1 = w2 = .5;
-		last_player_score = 0; 
-		restrict = true;
+		int calculationTime = 1000;
+		// Could not compile code for some reason again...
+		int roundLen = getMatch().getPlayClock() - timeoutPadding;
+		limit = -1;
+		while (System.currentTimeMillis() < timeout - calculationTime) {
+			limit++;
+			long start = System.currentTimeMillis();
+			StateMachine machine = getStateMachine();
+			machine.initialize(getMatch().getGame().getRules());
+			Role myRole = getRole();
+			MachineState state = machine.getInitialState();
+			// Give 1 second at the end of the meta-game to finish calculations
+			Move bestMove = bestmove(myRole, state, machine, timeout - calculationTime);
+			long recordedTime = System.currentTimeMillis() - start;
+			if (recordedTime >= roundLen || (wasTimedOut)) {
+				limit--;
+				wasTimedOut = false;
+				break;
+			}
+		}
+
+
 	}
 
 	@Override
@@ -143,7 +168,7 @@ public class FixedDepthThinker extends StateMachineGamer {
 		double opp = (double)oppoProximity(findOpponents(role, machine), state, machine);
 		double f1 = (double)mobility(role, state, machine); // for mobility heuristic
 		double f2 = (double)focus(role, state, machine); // for focus heuristic
-		double w1,w2;
+
 		//update strategy based on whether your score is going up or down from last move
 		if (opp > player) {
 			if (player < last_player_score) {
