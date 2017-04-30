@@ -46,7 +46,8 @@ public class FixedDepthThinker extends StateMachineGamer {
 		// MachineState state = machine.getInitialState();
 		int calculationTime = 1000;
 		// Could not compile code for some reason again...
-		int roundLen = getMatch().getPlayClock() - timeoutPadding;
+		int roundLen = getMatch().getPlayClock()*1000 - timeoutPadding;
+		System.out.println("RoundLen is: " + roundLen);
 		limit = -1;
 		while (System.currentTimeMillis() < timeout - calculationTime) {
 			limit++;
@@ -58,8 +59,11 @@ public class FixedDepthThinker extends StateMachineGamer {
 			// Give 1 second at the end of the meta-game to finish calculations
 			Move bestMove = bestmove(myRole, state, machine, timeout - calculationTime);
 			long recordedTime = System.currentTimeMillis() - start;
+			System.out.println("When the limit was: " + limit + ", it took " + recordedTime*1.0/1000 + " seconds.");
 			if (recordedTime >= roundLen || (wasTimedOut)) {
+				System.out.println("When the limit was: " + limit + ", it was cut short.");
 				limit--;
+				System.out.println("Now the limit is: " + limit);
 				wasTimedOut = false;
 				break;
 			}
@@ -74,7 +78,8 @@ public class FixedDepthThinker extends StateMachineGamer {
 		StateMachine machine = getStateMachine();
 		MachineState state = getCurrentState();
 		Role role = getRole();
-
+		wasTimedOut = false;
+		System.out.println(limit);
 
 		// FOR NOW, WE ARE STOPPING WITH ONE SECOND LEFT
 		timeout = timeout - 1000;
@@ -112,6 +117,8 @@ public class FixedDepthThinker extends StateMachineGamer {
 			for (Move oppoMove: oppoLegalMoves) {
 				long elapsed = System.currentTimeMillis();
 			    if (elapsed >= timeOut) {
+			    	wasTimedOut = true;
+			    	System.out.println("We timed out!");
 			        return score;
 			    }
 				List<List<Move>> oppoTurnLegalMoves = machine.getLegalJointMoves(state, opponent, oppoMove);
