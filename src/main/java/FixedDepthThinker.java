@@ -32,7 +32,6 @@ public class FixedDepthThinker extends StateMachineGamer {
 	@Override
 	public StateMachine getInitialStateMachine() {
 		return new CachedStateMachine(new ProverStateMachine());
-
 	}
 
 
