@@ -29,7 +29,7 @@ public class MonteCarloSearchThinker extends StateMachineGamer {
 	boolean restrict = true;
 	int timeoutPadding = 2000;
 	boolean wasTimedOut = false;
-	int mcsCount = 4;
+	int mcsCount = 100;
 	long returnBy;
 	Move bestSoFar = null;
 	StateMachine machine = null;
@@ -54,13 +54,31 @@ public class MonteCarloSearchThinker extends StateMachineGamer {
 	}
 
 
+	public Move chooseMove(List<Integer> possibleScores, List<Move> possibleMoves) {
+
+		// Choosing the move that correlates to the highest montecarlo score
+		Move bestChoice = null;
+		int highestScore = 0;
+		int numMoves = possibleMoves.size();
+		System.out.println("We had " + numMoves + " moves available.");
+		System.out.println(possibleScores.toString());
+		System.out.println();
+		for (int i = 0; i < numMoves; i++) {
+			if (possibleScores.get(i) > highestScore) {
+				highestScore = possibleScores.get(i);
+				bestChoice = possibleMoves.get(i);
+			}
+		}
+		return bestChoice;
+	}
+
 	@Override
 	public Move stateMachineSelectMove(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
 		wasTimedOut = false;
 		System.out.println(limit);
 
-		int calculationTime = 2000;
+		int calculationTime = 1000;
 		returnBy = timeout - timeoutPadding;
 
 
@@ -79,6 +97,9 @@ public class MonteCarloSearchThinker extends StateMachineGamer {
 		while (true) {
 			// Setting the possible scores
 			for (int i = 0; i < numMoves; i++) {
+				if (returnBy - calculationTime < System.currentTimeMillis()) {
+					return chooseMove(possibleScores, possibleMoves);
+				}
 				Random randomizer = new Random();
 				Move aMove = possibleMoves.get(i);
 				List<List<Move>> rounds = machine.getLegalJointMoves(state, myRole, aMove);
@@ -88,34 +109,10 @@ public class MonteCarloSearchThinker extends StateMachineGamer {
 				int score = montecarlo(myRole, newstate, machine);
 				possibleScores.set(i, score);
 			}
-			long stop = System.currentTimeMillis();
-			if (returnBy - calculationTime < System.currentTimeMillis()) {
-				break;
-			} else if (stop-start < getMatch().getPlayClock()*1000/2) {
-				mcsCount *= 2;
-			} else if (wasTimedOut) {
-				mcsCount /= 2;
-			}
 		}
 
-
-
-		// Choosing the move that correlates to the highest montecarlo score
-		Move bestChoice = null;
-		int highestScore = 0;
-		System.out.println("We had " + numMoves + " moves available.");
-		System.out.println(possibleScores.toString());
-		System.out.println();
-		for (int i = 0; i < numMoves; i++) {
-			if (possibleScores.get(i) > highestScore) {
-				highestScore = possibleScores.get(i);
-				bestChoice = possibleMoves.get(i);
-			}
-		}
-
-
-		return bestChoice;
 	}
+
 
 
 	public int montecarlo(Role role, MachineState state, StateMachine machine) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
