@@ -22,6 +22,9 @@ import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 // alquerque: use higher getgoal heuristics
 // battleofnumbers:heuristics. use mobility and opponent focus an goal.
 // breadth-first.
+// some classmates just errored repeatedly on arena matches. that will be penalized.
+// John Cena 1st place this week just made sure theirs beats Legal Player, since most bots on Arena err.
+// Deadlock, who won breakthroughsmall, combined 3 to 4 heuristic functions.
 
 public class DeepThinker extends StateMachineGamer {
 
