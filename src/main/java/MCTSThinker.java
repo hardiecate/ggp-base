@@ -59,7 +59,6 @@ public class MCTSThinker extends StateMachineGamer {
 
 
 	public Move chooseMove(List<Integer> possibleScores, List<Move> possibleMoves) {
-
 		// Choosing the move that correlates to the highest montecarlo score
 		Move bestChoice = null;
 		int highestScore = 0;
@@ -76,6 +75,10 @@ public class MCTSThinker extends StateMachineGamer {
 		return bestChoice;
 	}
 
+	private bool timeLeft(int calculationTime){
+		if (returnBy - calculationTime > System.currentTimeMillis()) return true;
+	}
+
 	@Override
 	public Move stateMachineSelectMove(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
@@ -86,8 +89,9 @@ public class MCTSThinker extends StateMachineGamer {
 		returnBy = timeout - timeoutPadding;
 
 
-		MachineState state = getCurrentState();
+		MachineState stateOrigin = getCurrentState();
 		long start = System.currentTimeMillis();
+
 		List<Move> possibleMoves = machine.getLegalMoves(state, myRole);
 		// Creates a list of the same size as possibleMoves, all populated with 0s
 		List<Integer> possibleScores = new ArrayList<Integer>((Collections.nCopies(possibleMoves.size(), 0)));
@@ -98,20 +102,38 @@ public class MCTSThinker extends StateMachineGamer {
 
 		}
 
-		while (true) {
+		//Is this enough padding for our calculations?
+		while (timeLeft(calculationTime)) {
+			//STEPS ONE & TWO:
+			//Do selection routine to find our unvisited starting point
+			//Also within this method, add successors to the tree
+			MachineState state = select(stateOrigin);
+
 			// Setting the possible scores
+			// Rudimentary time checks, very conservative. Work on it more 
+			// after seeing how initial run goes?
 			for (int i = 0; i < numMoves; i++) {
-				if (returnBy - calculationTime < System.currentTimeMillis()) {
+				if (!(timeLeft(calculationTime)) {
 					return chooseMove(possibleScores, possibleMoves);
 				}
+				//STEP THREE:
+				//Same simultaion routine w/ random action choices until 
+				//terminal state reached
 				Random randomizer = new Random();
 				Move aMove = possibleMoves.get(i);
 				List<List<Move>> rounds = machine.getLegalJointMoves(state, myRole, aMove);
 				int random = randomizer.nextInt(rounds.size());
 				List<Move> randomRound = rounds.get(random);
 				MachineState newstate = machine.getNextState(state, randomRound);
+				//Returns store at terminal state
 				int score = montecarlo(myRole, newstate, machine);
 				possibleScores.set(i, score);
+				//STEP FOUR:
+				//Propogate back the value of the terminal state reached by the 
+				//depth charge within montecarlo
+				if(timeLeft(calculationTime)) {
+					backpropogate(state, score);
+				}
 			}
 		}
 
