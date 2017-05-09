@@ -59,6 +59,7 @@ public class MCTSThinker extends StateMachineGamer {
 
 
 	public Move chooseMove(List<Integer> possibleScores, List<Move> possibleMoves) {
+
 		// Choosing the move that correlates to the highest montecarlo score
 		Move bestChoice = null;
 		int highestScore = 0;
@@ -75,8 +76,9 @@ public class MCTSThinker extends StateMachineGamer {
 		return bestChoice;
 	}
 
-	private bool timeLeft(int calculationTime){
-		if (returnBy - calculationTime > System.currentTimeMillis()) return true;
+	private boolean timeLeft(int calculationTime){
+		if (returnBy - calculationTime > System.currentTimeMillis()) {return true;}
+		return false;
 	}
 
 	@Override
@@ -91,8 +93,7 @@ public class MCTSThinker extends StateMachineGamer {
 
 		MachineState stateOrigin = getCurrentState();
 		long start = System.currentTimeMillis();
-
-		List<Move> possibleMoves = machine.getLegalMoves(state, myRole);
+		List<Move> possibleMoves = machine.getLegalMoves(stateOrigin, myRole);
 		// Creates a list of the same size as possibleMoves, all populated with 0s
 		List<Integer> possibleScores = new ArrayList<Integer>((Collections.nCopies(possibleMoves.size(), 0)));
 		int numMoves = possibleMoves.size();
@@ -103,21 +104,20 @@ public class MCTSThinker extends StateMachineGamer {
 		}
 
 		//Is this enough padding for our calculations?
-		while (timeLeft(calculationTime)) {
-			//STEPS ONE & TWO:
-			//Do selection routine to find our unvisited starting point
-			//Also within this method, add successors to the tree
-			MachineState state = select(stateOrigin);
+		 while (timeLeft(calculationTime)) {
+			 //STEPS ONE & TWO:
+			 //Do selection routine to find our unvisited starting point
+			 //Also within this method, add successors to the tree
+			 MachineState state = select(stateOrigin);
 
 			// Setting the possible scores
-			// Rudimentary time checks, very conservative. Work on it more 
-			// after seeing how initial run goes?
 			for (int i = 0; i < numMoves; i++) {
-				if (!(timeLeft(calculationTime)) {
-					return chooseMove(possibleScores, possibleMoves);
-				}
+				if (!(timeLeft(calculationTime))) {
+  					return chooseMove(possibleScores, possibleMoves);
+  				}
+
 				//STEP THREE:
-				//Same simultaion routine w/ random action choices until 
+				//Same simulation routine w/ random action choices until
 				//terminal state reached
 				Random randomizer = new Random();
 				Move aMove = possibleMoves.get(i);
@@ -125,17 +125,19 @@ public class MCTSThinker extends StateMachineGamer {
 				int random = randomizer.nextInt(rounds.size());
 				List<Move> randomRound = rounds.get(random);
 				MachineState newstate = machine.getNextState(state, randomRound);
-				//Returns store at terminal state
 				int score = montecarlo(myRole, newstate, machine);
 				possibleScores.set(i, score);
+
 				//STEP FOUR:
-				//Propogate back the value of the terminal state reached by the 
+				//Propogate back the value of the terminal state reached by the
 				//depth charge within montecarlo
 				if(timeLeft(calculationTime)) {
 					backpropogate(state, score);
 				}
 			}
 		}
+
+		return chooseMove(possibleScores, possibleMoves);
 
 	}
 
@@ -171,14 +173,19 @@ public class MCTSThinker extends StateMachineGamer {
 			}
 			last_player_score = player;
 			if (restrict) {
-				w2 = w1 * .5;
+				w2 = w1; // * 0.5 // Not sure why we kept cutting this factor in half
 				w1 = 1.0 - w2;
 			} else {
-				w1 = w2 * .5;
+				w1 = w2; // * 0.5
 				w2 = 1.0 - w1;
 			}
 		}
-		return (int)(w1*f1 + w2*f2);
+
+		// If we are really close to a goal state, emphasize that over the mobility/focus heuristics
+		if (player > (w1*f1 + w2*f2)) {
+			System.out.println("We are just gonna go for the goal.");
+		}
+		return (int)Math.max(player, (w1*f1 + w2*f2)); //(int)(w1*f1 + w2*f2);
 	}
 
 	public int selectfn(MachineState node, MachineState parent) throws MoveDefinitionException, GoalDefinitionException {
