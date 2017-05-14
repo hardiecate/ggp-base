@@ -25,8 +25,8 @@ public class MCTSThinker extends StateMachineGamer {
 
 	Player p;
 	int limit = 1;
-	double w1 = .5;
-	double w2 = .5;
+	double w1 = .6;
+	double w2 = .4;
 	double last_player_score = 0;
 	boolean restrict = true;
 	int timeoutPadding = 2000;
@@ -167,18 +167,21 @@ public class MCTSThinker extends StateMachineGamer {
 		double f2 = (double)focus(role, state, machine); // for focus heuristic
 
 		//update strategy based on whether your score is going up or down from last move
+		//if the opponent's score is higher than our player's score
 		if (opp > player) {
+			//if our score went down from the last round
 			if (player < last_player_score) {
+				System.out.println("Switching strategies!");;
 				restrict = !restrict;
+				if (restrict) {
+					w2 = w1; // Not sure why we kept cutting this factor in half
+					w1 = 1.0 - w2;
+				} else {
+					w1 = w2;
+					w2 = 1.0 - w1;
+				}
 			}
 			last_player_score = player;
-			if (restrict) {
-				w2 = w1; // * 0.5 // Not sure why we kept cutting this factor in half
-				w1 = 1.0 - w2;
-			} else {
-				w1 = w2; // * 0.5
-				w2 = 1.0 - w1;
-			}
 		}
 
 		// If we are really close to a goal state, emphasize that over the mobility/focus heuristics
