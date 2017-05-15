@@ -46,6 +46,57 @@ public class PropnetStateMachine extends StateMachine {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
+
+    }
+
+
+    public void clearPropNet() {
+        for (Proposition p : propNet.getBasePropositions().values())
+        {
+            p.setValue(false);
+        }
+    }
+
+    public void markActions(MachineState state) {
+    	Set<GdlSentence> contents = state.getContents();
+    	Map<GdlSentence, Proposition> inputProps = propNet.getInputPropositions();
+    	for (GdlSentence sen : inputProps.keySet()) {
+    		if (contents.contains(sen)) {
+        		inputProps.get(sen).setValue(true);
+    		}
+    	}
+    }
+
+    public void markBases(MachineState state) {
+    	Set<GdlSentence> contents = state.getContents();
+    	Map<GdlSentence, Proposition> baseProps = propNet.getBasePropositions();
+    	for (GdlSentence sen : baseProps.keySet()) {
+    		if (contents.contains(sen)) {
+        		baseProps.get(sen).setValue(true);
+    		}
+    	}
+    }
+
+    public boolean propMarkP(Proposition p) {
+    	if (p.getInputs().size() == 0) {
+    		// This is an input proposition
+    		return p.getValue();
+    	} else {
+    		List<Component> inputs = new ArrayList<Component>(p.getInputs());
+
+    		if (p.getInputs().size() == 1 && p.getInputs().) {
+    			// This is a base proposition
+    			return p.getValue();
+    		}
+    	}
+//    	if p) {return p.mark};
+//    	if (p.type=='input') {return p.mark};
+//    	if (p.type=='view') {return propmarkp(p.source)};
+//    	if (p.type=='negation') {return propmarknegation(p)};
+//    	if (p.type=='conjunction') {return propmarkconjunction(p)};
+//    	if (p.type=='disjunction') {return propmarkdisjunction(p)};
+//
+    	return false;
     }
 
     /**
