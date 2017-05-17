@@ -49,7 +49,6 @@ public class PropnetStateMachine extends StateMachine {
 
     }
 
-
     public void clearPropNet() {
         for (Proposition p : propNet.getBasePropositions().values())
         {
@@ -105,8 +104,9 @@ public class PropnetStateMachine extends StateMachine {
      */
     @Override
     public boolean isTerminal(MachineState state) {
-        // TODO: Compute whether the MachineState is terminal.
-        return false;
+    	markBases(state);
+    	Proposition termProp = propNet.getTerminalProposition();
+        return propMarkP(termProp);
     }
 
     /**
@@ -119,7 +119,13 @@ public class PropnetStateMachine extends StateMachine {
     @Override
     public int getGoal(MachineState state, Role role)
             throws GoalDefinitionException {
-        // TODO: Compute the goal for role in state.
+    	Set<GdlSentence> contents = state.getContents();
+        Map<Role, Set<Proposition>> goals = propNet.getGoalPropositions();
+        Set<Proposition> myGoals = goals.get(role);
+        System.out.println(myGoals.size());
+        for (Proposition goal: myGoals) {
+        	return getGoalValue(goal);
+        }
         return -1;
     }
 
@@ -130,8 +136,8 @@ public class PropnetStateMachine extends StateMachine {
      */
     @Override
     public MachineState getInitialState() {
-        // TODO: Compute the initial state.
-        return null;
+    	propNet.getInitProposition().setValue(true);
+    	return getStateFromBase();
     }
 
     /**
@@ -140,7 +146,7 @@ public class PropnetStateMachine extends StateMachine {
     @Override
     public List<Move> findActions(Role role)
             throws MoveDefinitionException {
-        // TODO: Compute legal moves.
+    	//TODO: FIND ACTIONS
         return null;
     }
 
@@ -160,8 +166,30 @@ public class PropnetStateMachine extends StateMachine {
     @Override
     public MachineState getNextState(MachineState state, List<Move> moves)
             throws TransitionDefinitionException {
-        // TODO: Compute the next state.
+    	/* Ah crap I have no idea what this is
+		markActions(state);
+		markBases(state);
+    	Map<GdlSentence, Proposition> bases = propNet.getBasePropositions();
+    	MachineState nextState = new MachineState();
+		for (int i = 0; i < bases.size(); i++) {
+			next = propMarkP(bases[i].source.source)};
+		return nexts
+		*/
+      // TODO: Compute the next state.
         return null;
+		/*
+		Set<GdlSentence> contents = new HashSet<GdlSentence>();
+        for (Proposition p : propNet.getBasePropositions().values())
+        {
+            p.setValue(p.getSingleInput().getValue());
+            if (p.getValue())
+            {
+                contents.add(p.getName());
+            }
+
+        }
+        return new MachineState(contents);
+		 */
     }
 
     /**
