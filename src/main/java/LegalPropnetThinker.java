@@ -41,6 +41,7 @@ public class LegalPropnetThinker extends StateMachineGamer {
 		List<Move> moves = machine.getLegalMoves(state, role);
 		List<List<Move>> outcomes = machine.getLegalJointMoves(state);
 
+		System.out.println("Is this terminal state?  " + machine.isTerminal(state));
 		System.out.println("Legal Moves include " + moves);
 		System.out.println("Chosen move is " + moves.get(0));
 		return moves.get(0);

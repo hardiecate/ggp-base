@@ -49,7 +49,6 @@ public class MCTSThinker extends StateMachineGamer {
 	@Override
 	public void stateMachineMetaGame(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
-
 		machine = getStateMachine();
 		machine.initialize(getMatch().getGame().getRules());
 		myRole = getRole();
@@ -107,8 +106,7 @@ public class MCTSThinker extends StateMachineGamer {
 			 //STEPS ONE & TWO:
 			 //Do selection routine to find our unvisited starting point
 			 //Also within this method, add successors to the tree
-			 MachineState state = select(stateOrigin);
-
+			MachineState state = select(stateOrigin);
 			// Setting the possible scores
 			for (int i = 0; i < numMoves; i++) {
 				if (!(timeLeft(calculationTime))) {
