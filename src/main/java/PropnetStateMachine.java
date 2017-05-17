@@ -132,6 +132,26 @@ public class PropnetStateMachine extends StateMachine {
     	}
     }
 
+    // I believe this is implemented correctly but I'm not sure where it's used
+    public GdlSentence propreward (Role role, MachineState state) {
+        markBases(state);
+        Set<Proposition> rewards;
+        for (var i=0; i<roles.length; i++) {
+            if (role==roles[i]) {
+                //treating goal propositions as rewards?
+                Map<Role, Set<Proposition>> goals = propNet.getGoalPropositions();
+                rewards = goals.get(i);
+                break;
+            }
+        }
+        for (Proposition p : rewards) {
+            if (propmarkp(p)) {
+                return rewards.get(i).getName();
+            }
+        }
+        return null;
+    }
+
     /**
      * Computes if the state is terminal. Should return the value
      * of the terminal proposition for the state.
@@ -176,6 +196,8 @@ public class PropnetStateMachine extends StateMachine {
 
     /**
      * Computes all possible actions for role.
+     * I don't believe we use this anywhere?
+     * Do we still have to write it?
      */
     @Override
     public List<Move> findActions(Role role)
@@ -216,30 +238,9 @@ public class PropnetStateMachine extends StateMachine {
     @Override
     public MachineState getNextState(MachineState state, List<Move> moves)
             throws TransitionDefinitionException {
-    	/* Ah crap I have no idea what this is
-		markActions(state);
-		markBases(state);
-    	Map<GdlSentence, Proposition> bases = propNet.getBasePropositions();
-    	MachineState nextState = new MachineState();
-		for (int i = 0; i < bases.size(); i++) {
-			next = propMarkP(bases[i].source.source)};
-		return nexts
-		*/
-      // TODO: Compute the next state.
-        return null;
-		/*
-		Set<GdlSentence> contents = new HashSet<GdlSentence>();
-        for (Proposition p : propNet.getBasePropositions().values())
-        {
-            p.setValue(p.getSingleInput().getValue());
-            if (p.getValue())
-            {
-                contents.add(p.getName());
-            }
-
-        }
-        return new MachineState(contents);
-		 */
+        markActions(state);
+        markBases(state);
+        return getStateFromBase();
     }
 
     /**
