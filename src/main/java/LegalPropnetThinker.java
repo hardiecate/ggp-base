@@ -12,7 +12,6 @@ import org.ggp.base.util.statemachine.cache.CachedStateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
-import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
 //Makes the first legal move
 
@@ -22,7 +21,7 @@ public class LegalPropnetThinker extends StateMachineGamer {
 
 	@Override
 	public StateMachine getInitialStateMachine() {
-		return new CachedStateMachine(new ProverStateMachine());
+		return new CachedStateMachine(new PropnetStateMachine());
 	}
 
 	@Override

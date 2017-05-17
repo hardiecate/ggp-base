@@ -135,20 +135,25 @@ public class PropnetStateMachine extends StateMachine {
     // I believe this is implemented correctly but I'm not sure where it's used
     public GdlSentence propreward (Role role, MachineState state) {
         markBases(state);
-        Set<Proposition> rewards;
-        for (var i=0; i<roles.length; i++) {
-            if (role==roles[i]) {
+        List<Proposition> rewards;
+        for (int i=0; i<roles.size(); i++) {
+            if (role==roles.get(i)) {
                 //treating goal propositions as rewards?
                 Map<Role, Set<Proposition>> goals = propNet.getGoalPropositions();
-                rewards = goals.get(i);
+                rewards = new ArrayList<Proposition> (goals.get(roles.get(i)));
+                for (int j = 0; j < rewards.size(); j++) {
+                    if (propMarkP(rewards.get(j))) {
+                        return rewards.get(j).getName();
+                    }
+                }
                 break;
             }
         }
-        for (Proposition p : rewards) {
-            if (propmarkp(p)) {
-                return rewards.get(i).getName();
-            }
-        }
+//        for (int i = 0; i < rewards.size(); i++) {
+//            if (propMarkP(rewards.get(i))) {
+//                return rewards.get(i).getName();
+//            }
+//        }
         return null;
     }
 

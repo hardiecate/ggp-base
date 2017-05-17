@@ -41,6 +41,8 @@ public class MCTSThinker extends StateMachineGamer {
 
 	@Override
 	public StateMachine getInitialStateMachine() {
+//		return new CachedStateMachine(new ProverStateMachine());
+
 		return new CachedStateMachine(new PropnetStateMachine()); // changed to propnet machine
 	}
 
@@ -249,6 +251,9 @@ public class MCTSThinker extends StateMachineGamer {
 			utility.put(node, utility.get(node) + score);
 			List<MachineState> pars = parents.get(node);
 			for (MachineState parent : pars) {
+				if (!(timeLeft(1000))) {
+  					return true;
+  				}
 				backpropogate(parent, score);
 			}
 		}
@@ -270,13 +275,19 @@ public class MCTSThinker extends StateMachineGamer {
 			return machine.getGoal(state, role);
 		}
 
-	    if (System.currentTimeMillis() >= returnBy) {
-	    	wasTimedOut = true;
-	    	System.out.println("We timed out!");
-	        return 0;
-	    }
+//	    if (System.currentTimeMillis() >= returnBy) {
+//	    	wasTimedOut = true;
+//	    	System.out.println("We timed out!");
+//	        return 0;
+//	    }
+
+		if (!(timeLeft(1000))) {
+			wasTimedOut = true;
+			return 0;
+		}
 
 		Random randomizer = new Random();
+		System.out.println("right before getlegaljointmoves");
 		List<List<Move>> legalJointMoves = machine.getLegalJointMoves(state);
 		int random = randomizer.nextInt(legalJointMoves.size());
 		List<Move> randomRound = legalJointMoves.get(random);
