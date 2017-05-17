@@ -11,11 +11,7 @@ import org.ggp.base.util.gdl.grammar.GdlRelation;
 import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.propnet.architecture.Component;
 import org.ggp.base.util.propnet.architecture.PropNet;
-import org.ggp.base.util.propnet.architecture.components.And;
-import org.ggp.base.util.propnet.architecture.components.Not;
-import org.ggp.base.util.propnet.architecture.components.Or;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
-import org.ggp.base.util.propnet.architecture.components.Transition;
 import org.ggp.base.util.propnet.factory.OptimizingPropNetFactory;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
@@ -80,56 +76,26 @@ public class PropnetStateMachine extends StateMachine {
     	}
     }
 
-    public boolean conjunction (Component p) {
-    	List<Component> inputs = new ArrayList<Component>(p.getInputs());
-    	int len = inputs.size();
-    	for (int i = 0; i < len; i++) {
-    		if (!(propMarkP(inputs.get(i)))) {
-    			return false;
-    		}
-    	}
-    	return true;
-    }
-
-    public boolean disjunction (Component p) {
-    	List<Component> inputs = new ArrayList<Component>(p.getInputs());
-    	int len = inputs.size();
-    	for (int i = 0; i < len; i++) {
-    		if (propMarkP(inputs.get(i))) {
-    			return true;
-    		}
-    	}
-    	return false;
-    }
-
-    public boolean negation (Component p) {
-    	return (!(propMarkP(p.getSingleInput())));
-    }
-
-    public boolean propMarkP(Component p) {
+    public boolean propMarkP(Proposition p) {
     	if (p.getInputs().size() == 0) {
     		// This is an input proposition
     		return p.getValue();
     	} else {
-    		if (p instanceof And) {
-    			// Conjunction
-    			return conjunction(p);
-    		} else if (p instanceof Or) {
-    			return disjunction(p);
-    		} else if (p instanceof Not) {
-    			return negation(p);
-    		}
-
-
     		List<Component> inputs = new ArrayList<Component>(p.getInputs());
 
-    		if (p.getInputs().size() == 1 && inputs.get(0) instanceof Transition) {
+    		if (p.getInputs().size() == 1 && p.getInputs().) {
     			// This is a base proposition
     			return p.getValue();
-    		} else {
-    			return propMarkP(p.getSingleInput());
     		}
     	}
+//    	if p) {return p.mark};
+//    	if (p.type=='input') {return p.mark};
+//    	if (p.type=='view') {return propmarkp(p.source)};
+//    	if (p.type=='negation') {return propmarknegation(p)};
+//    	if (p.type=='conjunction') {return propmarkconjunction(p)};
+//    	if (p.type=='disjunction') {return propmarkdisjunction(p)};
+//
+    	return false;
     }
 
     /**
@@ -190,24 +156,8 @@ public class PropnetStateMachine extends StateMachine {
     @Override
     public List<Move> getLegalMoves(MachineState state, Role role)
             throws MoveDefinitionException {
-
-    	// These next two lines are written over and over, maybe try to
-    	// find a way to save time and not call this multiple times? @junwon
-        clearPropNet();
-        markBases(state);
-
-
-        // Set of legal input propositions for this role
-        List<Proposition> legals = new ArrayList<Proposition> (propNet.getLegalPropositions().get(role));
-        List<Move> actions = new ArrayList<Move>();
-
-        int len = legals.size();
-        for (int i = 0; i < len; i++) {
-        	if (propMarkP(legals.get(i))) {
-        		actions.add(getMoveFromProposition(legals.get(i)));
-        	}
-        }
-        return actions;
+        // TODO: Compute legal moves.
+        return null;
     }
 
     /**
