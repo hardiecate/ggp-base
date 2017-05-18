@@ -287,7 +287,7 @@ public class MCTSThinker extends StateMachineGamer {
 		}
 
 		Random randomizer = new Random();
-		System.out.println("right before getlegaljointmoves");
+//		System.out.println("right before getlegaljointmoves");
 		List<List<Move>> legalJointMoves = machine.getLegalJointMoves(state);
 		int random = randomizer.nextInt(legalJointMoves.size());
 		List<Move> randomRound = legalJointMoves.get(random);

@@ -58,14 +58,21 @@ public class PropnetStateMachine extends StateMachine {
         {
             p.setValue(false);
         }
+        for (Proposition p : propNet.getInputPropositions().values()) {
+        		p.setValue(false);
+        }
+        propNet.getInitProposition().setValue(false);
+
     }
 
-    public void markActions(MachineState state) {
+    public void markActions(List<Move> moves, MachineState state) {
+    	System.out.println("Now in markActions");
     	Set<GdlSentence> contents = state.getContents();
     	Map<GdlSentence, Proposition> inputProps = propNet.getInputPropositions();
-    	for (GdlSentence sen : inputProps.keySet()) {
-    		if (contents.contains(sen)) {
-        		inputProps.get(sen).setValue(true);
+    	for (Proposition p : inputProps.values()) {
+    		System.out.println("Marking an input prop");
+    		if (moves.contains(getMoveFromProposition(p))) {
+        		p.setValue(true);
     		}
     	}
     }
@@ -163,6 +170,7 @@ public class PropnetStateMachine extends StateMachine {
      */
     @Override
     public boolean isTerminal(MachineState state) {
+    	clearPropNet();
     	markBases(state);
     	Proposition termProp = propNet.getTerminalProposition();
         return propMarkP(termProp);
@@ -195,6 +203,7 @@ public class PropnetStateMachine extends StateMachine {
      */
     @Override
     public MachineState getInitialState() {
+    	clearPropNet();
     	propNet.getInitProposition().setValue(true);
     	return getStateFromBase();
     }
@@ -211,6 +220,15 @@ public class PropnetStateMachine extends StateMachine {
         return null;
     }
 
+    @Override
+    public List<List<Move>> getLegalJointMoves(MachineState state) {
+    	System.out.println("In getLegalJointMoves");
+
+    	List<List<Move>> legalJointMoves = new ArrayList<List<Move>>();
+
+    	return legalJointMoves;
+    }
+
     /**
      * Computes the legal moves for role in state.
      */
@@ -218,8 +236,6 @@ public class PropnetStateMachine extends StateMachine {
     public List<Move> getLegalMoves(MachineState state, Role role)
             throws MoveDefinitionException {
 
-    	// These next two lines are written over and over, maybe try to
-    	// find a way to save time and not call this multiple times? @junwon
         clearPropNet();
         markBases(state);
 
@@ -234,6 +250,11 @@ public class PropnetStateMachine extends StateMachine {
         		actions.add(getMoveFromProposition(legals.get(i)));
         	}
         }
+
+    	System.out.println("Now in getLegalMoves");
+    	System.out.println(actions.toString());
+
+
         return actions;
     }
 
@@ -243,8 +264,9 @@ public class PropnetStateMachine extends StateMachine {
     @Override
     public MachineState getNextState(MachineState state, List<Move> moves)
             throws TransitionDefinitionException {
-        markActions(state);
+    	clearPropNet();
         markBases(state);
+        markActions(moves, state);
         return getStateFromBase();
     }
 
