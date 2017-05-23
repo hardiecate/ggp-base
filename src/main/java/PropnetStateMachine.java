@@ -129,14 +129,20 @@ public class PropnetStateMachine extends StateMachine {
         }
         propNet.getInitProposition().setValue(false);
 
+
+//        for (Proposition p : propNet.getLegalPropositions().values()) {
+//
+//        }
+
     }
 
     public void markActions(List<Move> moves, MachineState state) {
-    	System.out.println("Now in markActions");
+//    	System.out.println("Now in markActions");
+//    	System.out.println(moves.toString());
     	Set<GdlSentence> contents = state.getContents();
     	Map<GdlSentence, Proposition> inputProps = propNet.getInputPropositions();
     	for (Proposition p : inputProps.values()) {
-    		System.out.println("Marking an input prop");
+//    		System.out.println("Marking an input prop");
     		if (moves.contains(getMoveFromProposition(p))) {
         		p.setValue(true);
     		}
@@ -181,15 +187,18 @@ public class PropnetStateMachine extends StateMachine {
 
     public boolean propMarkP(Component p) {
     	if (p.getInputs().size() == 0) {
-    		// This is an input proposition
+//    		System.out.println("This is an input proposition");
     		return p.getValue();
     	} else {
     		if (p instanceof And) {
     			// Conjunction
+//    			System.out.println("This is a conjunction propositoin");
     			return conjunction(p);
     		} else if (p instanceof Or) {
+//    			System.out.println("This is a disjunction proposition");
     			return disjunction(p);
     		} else if (p instanceof Not) {
+//    			System.out.println("This is a negation proposition");
     			return negation(p);
     		}
 
@@ -198,8 +207,10 @@ public class PropnetStateMachine extends StateMachine {
 
     		if (p.getInputs().size() == 1 && inputs.get(0) instanceof Transition) {
     			// This is a base proposition
+//    			System.out.println("This is a base proposition.");
     			return p.getValue();
     		} else {
+//    			System.out.println("This is a view propositioin.");
     			return propMarkP(p.getSingleInput());
     		}
     	}
@@ -207,6 +218,7 @@ public class PropnetStateMachine extends StateMachine {
 
     // I believe this is implemented correctly but I'm not sure where it's used
     public GdlSentence propreward (Role role, MachineState state) {
+    	clearPropNet();
         markBases(state);
         List<Proposition> rewards;
         for (int i=0; i<roles.size(); i++) {
@@ -252,12 +264,17 @@ public class PropnetStateMachine extends StateMachine {
     @Override
     public int getGoal(MachineState state, Role role)
             throws GoalDefinitionException {
+    	clearPropNet();
+    	markBases(state);
     	Set<GdlSentence> contents = state.getContents();
         Map<Role, Set<Proposition>> goals = propNet.getGoalPropositions();
         Set<Proposition> myGoals = goals.get(role);
-        System.out.println(myGoals.size());
+//        System.out.println(myGoals.size());
         for (Proposition goal: myGoals) {
-        	return getGoalValue(goal);
+        	if (propMarkP(goal)) {
+        		return getGoalValue(goal);
+        	}
+//        	return getGoalValue(goal);
         }
         return -1;
     }
@@ -288,7 +305,7 @@ public class PropnetStateMachine extends StateMachine {
 
     @Override
     public List<List<Move>> getLegalJointMoves(MachineState state) {
-    	System.out.println("In getLegalJointMoves");
+//    	System.out.println("In getLegalJointMoves");
 
     	List<List<Move>> legalJointMoves = new ArrayList<List<Move>>();
 
@@ -305,21 +322,17 @@ public class PropnetStateMachine extends StateMachine {
         clearPropNet();
         markBases(state);
 
-
         // Set of legal input propositions for this role
         List<Proposition> legals = new ArrayList<Proposition> (propNet.getLegalPropositions().get(role));
         List<Move> actions = new ArrayList<Move>();
 
+        // Propogate input propositions, add them to list of moves if they propogate to true
         int len = legals.size();
         for (int i = 0; i < len; i++) {
         	if (propMarkP(legals.get(i))) {
         		actions.add(getMoveFromProposition(legals.get(i)));
         	}
         }
-
-    	System.out.println("Now in getLegalMoves");
-    	System.out.println(actions.toString());
-
 
         return actions;
     }
@@ -331,8 +344,21 @@ public class PropnetStateMachine extends StateMachine {
     public MachineState getNextState(MachineState state, List<Move> moves)
             throws TransitionDefinitionException {
     	clearPropNet();
-        markBases(state);
         markActions(moves, state);
+        markBases(state);
+
+
+//        MachineState newstate = state;
+//
+//    	Map<GdlSentence, Proposition> baseProps = propNet.getBasePropositions();
+//    	for (Proposition p : baseProps.values()) {
+////    		if (propMarkP(p.getSingleInput())) {
+//        		p.setValue(propMarkP(p.getSingleInput()));
+////    		}
+//    	}
+
+
+
         return getStateFromBase();
     }
 
@@ -431,8 +457,8 @@ public class PropnetStateMachine extends StateMachine {
         Set<GdlSentence> contents = new HashSet<GdlSentence>();
         for (Proposition p : propNet.getBasePropositions().values())
         {
-            p.setValue(p.getSingleInput().getValue());
-            if (p.getValue())
+//            p.setValue(p.getSingleInput().getValue());
+            if (propMarkP(p.getSingleInput()))
             {
                 contents.add(p.getName());
             }

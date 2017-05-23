@@ -13,10 +13,11 @@ import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
 import org.ggp.base.util.statemachine.StateMachine;
-import org.ggp.base.util.statemachine.cache.CachedStateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
+import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
+import org.ggp.base.util.statemachine.verifier.StateMachineVerifier;
 
 // Makes a fixed depth without heuristics move
 
@@ -38,12 +39,13 @@ public class MCTSThinker extends StateMachineGamer {
 	Map<MachineState, Integer> visited = new HashMap<MachineState, Integer>();
 	Map<MachineState, Integer> utility = new HashMap<MachineState, Integer>();
 	Map<MachineState, List<MachineState>> parents = new HashMap<MachineState, List<MachineState>>();
+	int depthchargeCount;
 
 	@Override
 	public StateMachine getInitialStateMachine() {
 //		return new CachedStateMachine(new ProverStateMachine());
 
-		return new CachedStateMachine(new PropnetStateMachine()); // changed to propnet machine
+		return new PropnetStateMachine(); // changed to propnet machine
 	}
 
 
@@ -51,14 +53,21 @@ public class MCTSThinker extends StateMachineGamer {
 	@Override
 	public void stateMachineMetaGame(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
+		depthchargeCount = 0;
 		machine = getStateMachine();
 		machine.initialize(getMatch().getGame().getRules());
 		myRole = getRole();
 		machine.getInitialState();
+		ProverStateMachine machine2 = new ProverStateMachine();
+		machine2.initialize(getMatch().getGame().getRules());
+
+
+		StateMachineVerifier.checkMachineConsistency(machine2, machine, 20000);
 	}
 
 
 	public Move chooseMove(List<Integer> possibleScores, List<Move> possibleMoves) {
+		depthchargeCount = 0;
 
 		// Choosing the move that correlates to the highest montecarlo score
 		Move bestChoice = null;
@@ -73,6 +82,8 @@ public class MCTSThinker extends StateMachineGamer {
 				bestChoice = possibleMoves.get(i);
 			}
 		}
+
+		System.out.println("Depth charge count: " + depthchargeCount);
 		return bestChoice;
 	}
 
@@ -271,6 +282,8 @@ public class MCTSThinker extends StateMachineGamer {
 	}
 
 	public int depthcharge (Role role, MachineState state, StateMachine machine) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+		depthchargeCount++;
+
 		if (machine.isTerminal(state)) {
 			return machine.getGoal(state, role);
 		}

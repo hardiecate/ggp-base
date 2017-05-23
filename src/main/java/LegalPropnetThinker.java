@@ -34,6 +34,8 @@ public class LegalPropnetThinker extends StateMachineGamer {
 	@Override
 	public Move stateMachineSelectMove(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
+		System.out.println();
+		System.out.println("We are now starting a new move!");
 		StateMachine machine = getStateMachine();
 		MachineState state = getCurrentState();
 		Role role = getRole();
