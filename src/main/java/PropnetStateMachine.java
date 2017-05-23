@@ -79,6 +79,7 @@ public class PropnetStateMachine extends StateMachine {
 		connective = connective leading to termination
 
 		while (termination only has disjunctions)
+			if (termination has non-disjunction or  flag) break;
 			if (connective instance of or &&
 				inputs are supplied by nodes in different subgames) {
 				cut off that node and inputs to or gate termination nodes for overall game
