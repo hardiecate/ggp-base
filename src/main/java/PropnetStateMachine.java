@@ -53,6 +53,72 @@ public class PropnetStateMachine extends StateMachine {
 
     }
 
+    /**
+     * for compound games with independent subgames
+     * where actions are disjunctive, termination
+     * and goals are in one factor.
+     */
+    public void factorIndependentSubgames() {
+    	/* pseudocode for logic
+    	t = termination proposition
+    	for (proposition index: indices) {
+    		if (!termination.source.contains(index)) {
+    			remove index from indices;
+    		}
+    	}
+    	*/
+    }
+
+    /**
+     * for compound games where performance in one "best"
+     * subgame determines score for overall game
+     */
+    public void factorDisjunctive() {
+		/* pseudocode for logic
+
+		connective = connective leading to termination
+
+		while (termination only has disjunctions)
+			if (connective instance of or &&
+				inputs are supplied by nodes in different subgames) {
+				cut off that node and inputs to or gate termination nodes for overall game
+			}
+		}
+
+		pick one subgame and proceed as just that game
+		 */
+
+    	/* possible extensions to strengthen
+    	1. check each subgame for termination when no action is played
+    	2. take shortest time period
+    	3. play each of other subgames with that as step limit
+    	 */
+    }
+
+    /**
+     * for compound games where action in one subgame affects
+     * all other subgames
+     */
+    public void factorConjunctive() {
+    	/* pseudocode for logic
+    	//group actions into equivalence classes of actions
+    	if outputs of two actions are input to & gate with same
+    	other input OR
+    	if output of two actions go to OR gate,
+    	then they are equivalent.
+
+    	//determine if classes satisfy lossless join group
+    	if each equiv class has one subgame where it has nonempty intersection
+    	of each equivalent class of every other subgame,
+    	then it has lossless join property
+
+    	//if equivalent and lossless join
+    	factor game into subgames
+    	modify propnet s.t. individual actions are changed to
+    	equivalent classes of which the actions are members
+    	 */
+    }
+
     public void clearPropNet() {
         for (Proposition p : propNet.getBasePropositions().values())
         {
@@ -374,4 +440,5 @@ public class PropnetStateMachine extends StateMachine {
         }
         return new MachineState(contents);
     }
+
 }
