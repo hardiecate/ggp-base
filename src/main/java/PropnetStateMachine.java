@@ -305,12 +305,30 @@ public class PropnetStateMachine extends StateMachine {
     }
 
     @Override
-    public List<List<Move>> getLegalJointMoves(MachineState state) {
-//    	System.out.println("In getLegalJointMoves");
-
-    	List<List<Move>> legalJointMoves = new ArrayList<List<Move>>();
-
-    	return legalJointMoves;
+    public List<List<Move>> getLegalJointMoves(MachineState state) throws MoveDefinitionException {
+    	System.out.println("In getLegalJointMoves");
+    	List<List<Move>> eachLegalMoves = new ArrayList();
+    	for (Role role: roles) {
+    		List<Move> legalMoves = getLegalMoves(state, role);
+			eachLegalMoves.add(legalMoves);
+    	}
+    	System.out.println("eachLegalMoves");
+    	System.out.println(eachLegalMoves);
+    	List<List<Move>> result = new ArrayList();
+    	for (List<Move> roleMoves: eachLegalMoves) {
+	    	List<List<Move>> newResult = new ArrayList();
+    		for (Move move: roleMoves) {
+    	    	for (List<Move> resultContent: result) {
+    	    		List<Move> newContent = resultContent;
+    	    		newContent.add(move);
+    	    		newResult.add(newContent);
+    	    	}
+    		}
+	    	result = newResult;
+    	}
+    	System.out.println("result printed");
+    	System.out.println(result);
+    	return result;
     }
 
     /**

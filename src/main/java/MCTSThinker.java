@@ -16,8 +16,6 @@ import org.ggp.base.util.statemachine.StateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
-import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
-import org.ggp.base.util.statemachine.verifier.StateMachineVerifier;
 
 // Makes a fixed depth without heuristics move
 
@@ -58,11 +56,11 @@ public class MCTSThinker extends StateMachineGamer {
 		machine.initialize(getMatch().getGame().getRules());
 		myRole = getRole();
 		machine.getInitialState();
-		ProverStateMachine machine2 = new ProverStateMachine();
-		machine2.initialize(getMatch().getGame().getRules());
-
-
-		StateMachineVerifier.checkMachineConsistency(machine2, machine, 20000);
+//		ProverStateMachine machine2 = new ProverStateMachine();
+//		machine2.initialize(getMatch().getGame().getRules());
+//
+//
+//		StateMachineVerifier.checkMachineConsistency(machine2, machine, 20000);
 	}
 
 
