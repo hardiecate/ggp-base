@@ -65,7 +65,6 @@ public class MCTSThinker extends StateMachineGamer {
 
 
 	public Move chooseMove(List<Integer> possibleScores, List<Move> possibleMoves) {
-		depthchargeCount = 0;
 
 		// Choosing the move that correlates to the highest montecarlo score
 		Move bestChoice = null;
@@ -75,7 +74,7 @@ public class MCTSThinker extends StateMachineGamer {
 		System.out.println(possibleScores.toString());
 		System.out.println();
 		for (int i = 0; i < numMoves; i++) {
-			if (possibleScores.get(i) > highestScore) {
+			if (possibleScores.get(i) >= highestScore) {
 				highestScore = possibleScores.get(i);
 				bestChoice = possibleMoves.get(i);
 			}
@@ -93,6 +92,7 @@ public class MCTSThinker extends StateMachineGamer {
 	@Override
 	public Move stateMachineSelectMove(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
+		depthchargeCount = 0;
 		wasTimedOut = false;
 		System.out.println(limit);
 
@@ -145,6 +145,7 @@ public class MCTSThinker extends StateMachineGamer {
 			}
 		}
 
+			System.out.println("Depth charge count: " + depthchargeCount);
 		return chooseMove(possibleScores, possibleMoves);
 
 	}

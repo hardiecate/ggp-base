@@ -272,12 +272,15 @@ public class PropnetStateMachine extends StateMachine {
         Set<Proposition> myGoals = goals.get(role);
 //        System.out.println(myGoals.size());
         for (Proposition goal: myGoals) {
+//    		System.out.println(goal.toString());
+//    		System.out.println(getGoalValue(goal));
+//    		System.out.println();
         	if (propMarkP(goal)) {
         		return getGoalValue(goal);
         	}
 //        	return getGoalValue(goal);
         }
-        return -1;
+        return 0;
     }
 
     /**
@@ -304,31 +307,64 @@ public class PropnetStateMachine extends StateMachine {
         return null;
     }
 
+
+    @Override
+	protected void crossProductLegalMoves(List<List<Move>> legals, List<List<Move>> crossProduct, LinkedList<Move> partial)
+    {
+        if (partial.size() == legals.size()) {
+            crossProduct.add(new ArrayList<Move>(partial));
+        } else {
+            for (Move move : legals.get(partial.size())) {
+                partial.addLast(move);
+                crossProductLegalMoves(legals, crossProduct, partial);
+                partial.removeLast();
+            }
+        }
+    }
+
+
+
+
+
+
+
     @Override
     public List<List<Move>> getLegalJointMoves(MachineState state) throws MoveDefinitionException {
-    	System.out.println("In getLegalJointMoves");
-    	List<List<Move>> eachLegalMoves = new ArrayList();
-    	for (Role role: roles) {
-    		List<Move> legalMoves = getLegalMoves(state, role);
-			eachLegalMoves.add(legalMoves);
-    	}
-    	System.out.println("eachLegalMoves");
-    	System.out.println(eachLegalMoves);
-    	List<List<Move>> result = new ArrayList();
-    	for (List<Move> roleMoves: eachLegalMoves) {
-	    	List<List<Move>> newResult = new ArrayList();
-    		for (Move move: roleMoves) {
-    	    	for (List<Move> resultContent: result) {
-    	    		List<Move> newContent = resultContent;
-    	    		newContent.add(move);
-    	    		newResult.add(newContent);
-    	    	}
-    		}
-	    	result = newResult;
-    	}
-    	System.out.println("result printed");
-    	System.out.println(result);
-    	return result;
+//    	System.out.println("In getLegalJointMoves");
+//    	List<List<Move>> eachLegalMoves = new ArrayList<List<Move>>();
+//    	for (Role role: roles) {
+//    		List<Move> legalMoves = getLegalMoves(state, role);
+//			eachLegalMoves.add(legalMoves);
+//    	}
+//    	System.out.println("eachLegalMoves");
+//    	System.out.println(eachLegalMoves);
+//    	List<List<Move>> result = new ArrayList<List<Move>>();
+//    	for (List<Move> roleMoves: eachLegalMoves) {
+//	    	List<List<Move>> newResult = new ArrayList<List<Move>>();
+//    		for (Move move: roleMoves) {
+//    	    	for (List<Move> resultContent: result) {
+//    	    		List<Move> newContent = resultContent;
+//    	    		newContent.add(move);
+//    	    		newResult.add(newContent);
+//    	    	}
+//    		}
+//	    	result = newResult;
+//    	}
+//    	System.out.println("result printed");
+//    	System.out.println(result);
+//    	return result;
+
+//    	System.out.println("Now in getLegalJointMoves!");
+
+        List<List<Move>> legals = new ArrayList<List<Move>>();
+        for (Role role : getRoles()) {
+            legals.add(getLegalMoves(state, role));
+        }
+
+        List<List<Move>> crossProduct = new ArrayList<List<Move>>();
+        crossProductLegalMoves(legals, crossProduct, new LinkedList<Move>());
+
+        return crossProduct;
     }
 
     /**
