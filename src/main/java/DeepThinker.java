@@ -9,6 +9,9 @@ import org.ggp.base.apps.player.Player;
 import org.ggp.base.player.gamer.exception.GamePreviewException;
 import org.ggp.base.player.gamer.statemachine.StateMachineGamer;
 import org.ggp.base.util.game.Game;
+import org.ggp.base.util.gdl.grammar.Gdl;
+import org.ggp.base.util.gdl.grammar.GdlLiteral;
+import org.ggp.base.util.gdl.grammar.GdlRule;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
@@ -58,6 +61,10 @@ public class DeepThinker extends StateMachineGamer {
 		machine.initialize(getMatch().getGame().getRules());
 		myRole = getRole();
 		machine.getInitialState();
+
+
+
+		prunerules(getMatch().getGame().getRules());
 //		ProverStateMachine machine2 = new ProverStateMachine();
 //		machine2.initialize(getMatch().getGame().getRules());
 //
@@ -313,6 +320,7 @@ public class DeepThinker extends StateMachineGamer {
 	public int mobility(Role role, MachineState state, StateMachine machine) throws MoveDefinitionException {
 		List<Move> actions = machine.getLegalMoves(state, role);
 		List<Move> feasibles = machine.findActions(role);
+
 		return (int)((double)actions.size()/(double)feasibles.size() * 100);
 	}
 
@@ -320,6 +328,109 @@ public class DeepThinker extends StateMachineGamer {
 		return 100 - mobility(role, state, machine);
 	}
 
+
+
+
+
+
+	public List<GdlRule> prunerules (List<Gdl> list) {
+		List<GdlRule> rules = new ArrayList<GdlRule>();
+
+
+		for (Gdl g : list) {
+			if (g.toString().indexOf("( <= (") == 0) {
+				rules.add((GdlRule) g);
+			}
+		}
+
+
+		List<GdlRule> newRules = new ArrayList<GdlRule>();
+		for (int i = 0; i < rules.size(); i++) {
+
+			if (!subsumedp(rules.get(i), newRules) && (!(subsumedp(rules.get(i), rules.subList(i+1, rules.size()))))) {
+				newRules.add(rules.get(i));
+			}
+		}
+		return newRules;
+	}
+
+	public boolean subsumedp (GdlRule rule, List<GdlRule> rules) {
+		for (int i = 0; i < rules.size(); i++) {
+			if (subsumesp(rules.get(i), rule)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public boolean subsumesp (GdlRule pRule, GdlRule qRule) {
+
+		List<GdlLiteral> p = pRule.getBody();
+		List<GdlLiteral> q = qRule.getBody();
+		System.out.println(q.toString());
+		System.out.println(p.toString());
+		System.out.println();
+
+		if (p.equals(q)) {
+			return true;
+		}
+
+		// if (symbolp(p) || symbolp(q)) {
+		//	return false;
+		// }
+
+		for (GdlLiteral pLit : p) {
+			for (GdlLiteral qLit : q) {
+				Map<String, String> al = matcher(pLit, qLit);
+				if (al != null && subsumesexp(p.subList(1, p.size()), q.subList(1, q.size()), al)) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+
+	public boolean subsumesexp (List<GdlLiteral> pl, List<GdlLiteral> QL, Map<String, String> AL) {
+		if (pl.size() == 0) {
+			return true;
+		}
+		for (int i = 0; i < QL.size(); i++) {
+			Map<String, String> bl = matcher(pl.get(0), QL.get(i)/*, AL*/);
+			if (bl != null && subsumesexp(pl.subList(1, pl.size()), QL, bl)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public Map<String, String> matcher (GdlLiteral p, GdlLiteral q) {
+		System.out.println("Now in matcher");
+
+		Map<String, String> toReturn = new HashMap<String, String>();
+		String[] pString = p.toString().split(" ");
+		String[] qString = q.toString().split(" ");
+		System.out.println("Literal string for p: ");
+		for (String s : pString) {
+			if (s.contains("?")) {
+				System.out.println(s);
+			}
+		}
+		System.out.println("Literal string for q: ");
+		for (String s : qString) {
+			if (s.contains("?")) {
+				System.out.println(s);
+			}
+		}
+		System.out.println();
+
+
+		if (toReturn.size() == 0) {
+			return null;
+		}
+		return toReturn;
+	}
 
 	@Override
 	public void stateMachineStop() {
