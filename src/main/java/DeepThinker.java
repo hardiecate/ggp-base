@@ -1,5 +1,9 @@
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
 
 import org.ggp.base.apps.player.Player;
 import org.ggp.base.player.gamer.exception.GamePreviewException;
@@ -15,26 +19,33 @@ import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
-// Deep thinker
-// use start time
-// use time: opponent's turn
-// use multithread
-// alquerque: use higher getgoal heuristics
-// battleofnumbers:heuristics. use mobility and opponent focus an goal.
-// breadth-first.
-// some classmates just errored repeatedly on arena matches. that will be penalized.
-// John Cena 1st place this week just made sure theirs beats Legal Player, since most bots on Arena err.
-// Deadlock, who won breakthroughsmall, combined 3 to 4 heuristic functions.
+// Makes a fixed depth without heuristics move
 
 public class DeepThinker extends StateMachineGamer {
 
 	Player p;
-	int limit = 3;
-	int pregame;
+	int limit = 1;
+	double w1 = .6;
+	double w2 = .4;
+	double last_player_score = 0;
+	boolean restrict = true;
+	int timeoutPadding = 2000;
+	boolean wasTimedOut = false;
+	int mcsCount = 100;
+	long returnBy;
+	Move bestSoFar = null;
+	StateMachine machine = null;
+	Role myRole = null;
+	Map<MachineState, Integer> visited = new HashMap<MachineState, Integer>();
+	Map<MachineState, Integer> utility = new HashMap<MachineState, Integer>();
+	Map<MachineState, List<MachineState>> parents = new HashMap<MachineState, List<MachineState>>();
+	int depthchargeCount;
 
 	@Override
 	public StateMachine getInitialStateMachine() {
 		return new CachedStateMachine(new ProverStateMachine());
+
+//		return new PropnetStateMachine(); // changed to propnet machine
 	}
 
 
@@ -42,96 +53,103 @@ public class DeepThinker extends StateMachineGamer {
 	@Override
 	public void stateMachineMetaGame(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
-		timeout = timeout - 1000;
-	    //while (System.currentTimeMillis() < timeout) {
-	    //	pregame++;
-	    //}
-	    return;
+		depthchargeCount = 0;
+		machine = getStateMachine();
+		machine.initialize(getMatch().getGame().getRules());
+		myRole = getRole();
+		machine.getInitialState();
+//		ProverStateMachine machine2 = new ProverStateMachine();
+//		machine2.initialize(getMatch().getGame().getRules());
+//
+//
+//		StateMachineVerifier.checkMachineConsistency(machine2, machine, 20000);
+	}
+
+
+	public Move chooseMove(List<Integer> possibleScores, List<Move> possibleMoves) {
+
+		// Choosing the move that correlates to the highest montecarlo score
+		Move bestChoice = null;
+		int highestScore = 0;
+		int numMoves = possibleMoves.size();
+		System.out.println("We had " + numMoves + " moves available.");
+		System.out.println(possibleScores.toString());
+		System.out.println();
+		for (int i = 0; i < numMoves; i++) {
+			if (possibleScores.get(i) >= highestScore) {
+				highestScore = possibleScores.get(i);
+				bestChoice = possibleMoves.get(i);
+			}
+		}
+
+		System.out.println("Depth charge count: " + depthchargeCount);
+		return bestChoice;
+	}
+
+	private boolean timeLeft(int calculationTime){
+		if (returnBy - calculationTime > System.currentTimeMillis()) {return true;}
+		return false;
 	}
 
 	@Override
 	public Move stateMachineSelectMove(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
-		StateMachine machine = getStateMachine();
-		MachineState state = getCurrentState();
-		Role role = getRole();
+		depthchargeCount = 0;
+		wasTimedOut = false;
+		System.out.println(limit);
 
-		// FOR NOW, WE ARE STOPPING WITH ONE SECOND LEFT
-		timeout = timeout - 2000;
+		int calculationTime = 1000;
+		returnBy = timeout - timeoutPadding;
 
-		return bestmove(role, state, machine, timeout);
-	}
 
-	public Move bestmove(Role role, MachineState state, StateMachine machine, long timeOut) throws GoalDefinitionException, TransitionDefinitionException, MoveDefinitionException {
+		MachineState stateOrigin = getCurrentState();
+		long start = System.currentTimeMillis();
+		List<Move> possibleMoves = machine.getLegalMoves(stateOrigin, myRole);
+		// Creates a list of the same size as possibleMoves, all populated with 0s
+		List<Integer> possibleScores = new ArrayList<Integer>((Collections.nCopies(possibleMoves.size(), 0)));
+		int numMoves = possibleMoves.size();
+		if (numMoves == 1) {
+			System.out.println("There was only one move to make!");
+			return possibleMoves.get(0);
 
-		List<List<Move>> myTurnLegalMoves = machine.getLegalJointMoves(state);
-		Move move = myTurnLegalMoves.get(0).get(0);
-		int score = 0;
-		int level = 0;
-		for (int i = 0; i < myTurnLegalMoves.size(); i++) {
-			List<Move> myTurnMove = myTurnLegalMoves.get(i);
-			int result = minscore(role, myTurnMove.get(0), machine.getNextState(state, myTurnMove), machine, level, timeOut);
-			if (result > score) {
-				score = result;
-				move = myTurnMove.get(0);
-			}
-		}
-		return move;
-	}
-
-	public int minscore(Role myRole, Move myAction, MachineState state, StateMachine machine, int level, long timeOut) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
-		if (machine.isTerminal(state)) {
-			return machine.getGoal(state, myRole);
 		}
 
-		List<Role> opponents = findOpponents(myRole, machine);
-		//if (level >= limit) return oppoProximity(opponents, state, machine);
-		int score = 100;
-		for (Role opponent: opponents) {
-			List<Move> oppoLegalMoves = machine.getLegalMoves(state, opponent);
-			for (Move oppoMove: oppoLegalMoves) {
-				long elapsed = System.currentTimeMillis();
-			    if (elapsed >= timeOut) {
-			        return score;
-			    }
-				List<List<Move>> oppoTurnLegalMoves = machine.getLegalJointMoves(state, opponent, oppoMove);
-				for (int i=0; i<oppoTurnLegalMoves.size(); i++){
-					List<Move> legalTurn = oppoTurnLegalMoves.get(i);
-					MachineState newstate = machine.getNextState(state, legalTurn);
-					int result = maxscore(myRole, newstate, machine, level + 1, timeOut);
-					if (result < score) score = result;
+		//Is this enough padding for our calculations?
+		 while (timeLeft(calculationTime)) {
+			 //STEPS ONE & TWO:
+			 //Do selection routine to find our unvisited starting point
+			 //Also within this method, add successors to the tree
+			MachineState state = select(stateOrigin);
+			// Setting the possible scores
+			for (int i = 0; i < numMoves; i++) {
+				if (!(timeLeft(calculationTime))) {
+  					return chooseMove(possibleScores, possibleMoves);
+  				}
+
+				//STEP THREE:
+				//Same simulation routine w/ random action choices until
+				//terminal state reached
+				Random randomizer = new Random();
+				Move aMove = possibleMoves.get(i);
+				List<List<Move>> rounds = machine.getLegalJointMoves(state, myRole, aMove);
+				int random = randomizer.nextInt(rounds.size());
+				List<Move> randomRound = rounds.get(random);
+				MachineState newstate = machine.getNextState(state, randomRound);
+				int score = montecarlo(myRole, newstate, machine);
+				possibleScores.set(i, score);
+
+				//STEP FOUR:
+				//Propogate back the value of the terminal state reached by the
+				//depth charge within montecarlo
+				if(timeLeft(calculationTime)) {
+					backpropogate(state, score);
 				}
 			}
 		}
-		return score;
-	}
 
-	public List<Role> findOpponents(Role role, StateMachine machine) {
-		List<Role> allRoles = machine.getRoles();
-		List<Role> opponents = new ArrayList<Role>();
-		for (Role testRole: allRoles) {
-			if (testRole != role) opponents.add(testRole);
-		}
-		return opponents;
-	}
+			System.out.println("Depth charge count: " + depthchargeCount);
+		return chooseMove(possibleScores, possibleMoves);
 
-	public int maxscore(Role role, MachineState state, StateMachine machine, int level, long timeOut) throws GoalDefinitionException, TransitionDefinitionException, MoveDefinitionException {
-		if (machine.isTerminal(state)) {
-			return machine.getGoal(state, role);
-		}
-		if (level >= limit) return evalfn(role, state, machine);
-		List<List<Move>> myTurnLegalMoves = machine.getLegalJointMoves(state);
-		int score = 0;
-
-		for (int i = 0; i < myTurnLegalMoves.size(); i++) {
-			List<Move> myTurnMove = myTurnLegalMoves.get(i);
-			int result = minscore(role, myTurnMove.get(0), machine.getNextState(state, myTurnMove), machine, level, timeOut);
-			if (result == 100) return result;
-			if (result > score) {
-				score = result;
-			}
-		}
-		return score;
 	}
 
 	public int oppoProximity(List<Role> opponents, MachineState state, StateMachine machine) throws GoalDefinitionException {
@@ -142,13 +160,155 @@ public class DeepThinker extends StateMachineGamer {
 		return 100 - (int)(score / opponents.size());
 	}
 
+
+	public List<Role> findOpponents(Role role, StateMachine machine) {
+		List<Role> allRoles = machine.getRoles();
+		List<Role> opponents = new ArrayList<Role>();
+		for (Role testRole: allRoles) {
+			if (testRole != role) opponents.add(testRole);
+		}
+		return opponents;
+	}
+
 	public int evalfn(Role role, MachineState state, StateMachine machine) throws MoveDefinitionException, GoalDefinitionException {
 		//return 0; // for non heuristics
-		//return mobility(role, state, machine); // for mobility heuristic
-		//return focus(role, state, machine); // for focus heuristic
-		//return machine.getGoal(state, role); // for simple goal proximity
-		return (int)(0.8 * machine.getGoal(state, role) + 0.2 * mobility(role, state, machine));
+		double player = (double)machine.getGoal(state, role); // for simple goal proximity
+		double opp = (double)oppoProximity(findOpponents(role, machine), state, machine);
+		double f1 = (double)mobility(role, state, machine); // for mobility heuristic
+		double f2 = (double)focus(role, state, machine); // for focus heuristic
+
+		//update strategy based on whether your score is going up or down from last move
+		//if the opponent's score is higher than our player's score
+		if (opp > player) {
+			//if our score went down from the last round
+			if (player < last_player_score) {
+				System.out.println("Switching strategies!");;
+				restrict = !restrict;
+				if (restrict) {
+					w2 = w1; // Not sure why we kept cutting this factor in half
+					w1 = 1.0 - w2;
+				} else {
+					w1 = w2;
+					w2 = 1.0 - w1;
+				}
+			}
+			last_player_score = player;
+		}
+
+		// If we are really close to a goal state, emphasize that over the mobility/focus heuristics
+		if (player > (w1*f1 + w2*f2)) {
+			System.out.println("We are just gonna go for the goal.");
+		}
+		return (int)Math.max(player, (w1*f1 + w2*f2)); //(int)(w1*f1 + w2*f2);
 	}
+
+	public int selectfn(MachineState node, MachineState parent) throws MoveDefinitionException, GoalDefinitionException {
+		return (int)((1.0*evalfn(myRole, node, machine)) + Math.sqrt(2*Math.log(visited.get(parent))))/(visited.get(node));
+	}
+
+	public MachineState select(MachineState node) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
+		if (!(visited.containsKey(node))) {return node;}
+		List<MachineState> children = machine.getNextStates(node);
+
+		// Update the parents list
+		for (MachineState child : children) {
+			if (parents.containsKey(child)) {
+				if (!(parents.get(child).contains(node))) {
+					List<MachineState> pars = parents.get(child);
+					pars.add(node); // Updating list of this child's parents
+					parents.put(node, pars); // Updating the global map
+
+				}
+			} else {
+				List<MachineState> pars = new ArrayList<MachineState>();
+				pars.add(node); // Updating list of this child's parents
+				parents.put(node, pars); // Updating the global map
+
+			}
+		}
+
+		// Return first child that has not been visited yet
+		for (MachineState child : children) {
+			if (!(visited.containsKey(child))) {
+				return child;
+			}
+		}
+	  int score = 0;
+	  MachineState result = node;
+
+	  // All children have been visited. Find highest score among children.
+	  for (MachineState child: children) {
+	      int newscore = selectfn(child, node);
+	      if (newscore>score) {
+	          score = newscore;
+	          result=child;
+	      }
+	  }
+	  return select(result);
+  }
+
+//	public boolean expand (MachineState node) throws MoveDefinitionException {
+//		List<Move> actions = machine.getLegalMoves(node, myRole);
+//		for (Move action: actions) {
+//			List<Move> moves = machine.getLegalJointMoves(node, myRole, move);
+//			moves.add(action);
+//			MachineState newstate = machine.getNextState(node, moves);
+//		}
+//		return false;
+//	}
+
+	public boolean backpropogate(MachineState node,  int score) {
+		if (visited.containsKey(node)) {
+			visited.put(node, visited.get(node) + 1);
+			utility.put(node, utility.get(node) + score);
+			List<MachineState> pars = parents.get(node);
+			for (MachineState parent : pars) {
+				if (!(timeLeft(1000))) {
+  					return true;
+  				}
+				backpropogate(parent, score);
+			}
+		}
+		return true;
+	}
+
+	public int montecarlo(Role role, MachineState state, StateMachine machine) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+		int total = 0;
+		for (int i = 0; i < mcsCount; i++) {
+			int charge = depthcharge(role, state, machine);
+			total = total + charge;
+		}
+		return (int) (1.0*total/mcsCount);
+
+	}
+
+	public int depthcharge (Role role, MachineState state, StateMachine machine) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+		depthchargeCount++;
+
+		if (machine.isTerminal(state)) {
+			return machine.getGoal(state, role);
+		}
+
+//	    if (System.currentTimeMillis() >= returnBy) {
+//	    	wasTimedOut = true;
+//	    	System.out.println("We timed out!");
+//	        return 0;
+//	    }
+
+		if (!(timeLeft(1000))) {
+			wasTimedOut = true;
+			return 0;
+		}
+
+		Random randomizer = new Random();
+//		System.out.println("right before getlegaljointmoves");
+		List<List<Move>> legalJointMoves = machine.getLegalJointMoves(state);
+		int random = randomizer.nextInt(legalJointMoves.size());
+		List<Move> randomRound = legalJointMoves.get(random);
+		MachineState newstate = machine.getNextState(state, randomRound);
+		return depthcharge(role, newstate, machine);
+	}
+
 
 	public int mobility(Role role, MachineState state, StateMachine machine) throws MoveDefinitionException {
 		List<Move> actions = machine.getLegalMoves(state, role);
