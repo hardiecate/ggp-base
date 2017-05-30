@@ -60,12 +60,15 @@ public class PropnetStateMachine extends StateMachine {
      */
     public void factorIndependentSubgames() {
     	/* pseudocode for logic
-    	t = termination proposition
-    	for (proposition index: indices) {
-    		if (!termination.source.contains(index)) {
-    			remove index from indices;
+    	Proposition t = termination proposition
+    	List<Proposition> relevant = new ArrayList<Proposition> ();
+    	for (Proposition index: indices) {
+    		if (termination.source.contains(index)) {
+    			relevant.add(index);
     		}
     	}
+
+    	return relevant // ??? Do we want this to return or just straight up replace the indices right here and now?
     	*/
     }
 
