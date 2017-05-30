@@ -326,9 +326,9 @@ public class DeepThinker extends StateMachineGamer {
 
 	public GdlRule prunesubgoals(GdlRule rule) throws SymbolFormatException {
 		List<GdlLiteral> vl = new ArrayList<GdlLiteral>();
-		vl.add(rule.get(1));
+		vl.add(rule.get(0));
 		List<GdlLiteral> newrule = new ArrayList<GdlLiteral>();
-		newrule.add(rule.get(1));
+		newrule.add(rule.get(0));
 		for (int i = 2; i < rule.arity(); i++) {
 			List<GdlLiteral> sl = newrule;
 			for (int x = i + 1; x < rule.arity(); x++) {
