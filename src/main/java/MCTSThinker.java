@@ -19,8 +19,6 @@ import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
-// Makes a fixed depth without heuristics move
-
 public class MCTSThinker extends StateMachineGamer {
 
 	Player p;
@@ -44,12 +42,9 @@ public class MCTSThinker extends StateMachineGamer {
 	@Override
 	public StateMachine getInitialStateMachine() {
 		return new CachedStateMachine(new ProverStateMachine());
-
 //		return new PropnetStateMachine(); // changed to propnet machine
 	}
 
-
-	// This is where the pre-game calculations are done.
 	@Override
 	public void stateMachineMetaGame(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
@@ -297,7 +292,7 @@ public class MCTSThinker extends StateMachineGamer {
 
 		if (!(timeLeft(1000))) {
 			wasTimedOut = true;
-			return 0;
+			return evalfn(role, state, machine);
 		}
 
 		Random randomizer = new Random();

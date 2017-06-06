@@ -9,10 +9,6 @@ import org.ggp.base.apps.player.Player;
 import org.ggp.base.player.gamer.exception.GamePreviewException;
 import org.ggp.base.player.gamer.statemachine.StateMachineGamer;
 import org.ggp.base.util.game.Game;
-import org.ggp.base.util.gdl.factory.GdlFactory;
-import org.ggp.base.util.gdl.grammar.GdlLiteral;
-import org.ggp.base.util.gdl.grammar.GdlPool;
-import org.ggp.base.util.gdl.grammar.GdlRule;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
@@ -22,14 +18,12 @@ import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
-import org.ggp.base.util.symbol.factory.exceptions.SymbolFormatException;
 
 // Makes a fixed depth without heuristics move
 
 public class DeepThinker extends StateMachineGamer {
 
 	Player p;
-	int limit = 1;
 	double w1 = .6;
 	double w2 = .4;
 	double last_player_score = 0;
@@ -49,7 +43,6 @@ public class DeepThinker extends StateMachineGamer {
 	@Override
 	public StateMachine getInitialStateMachine() {
 		return new CachedStateMachine(new ProverStateMachine());
-
 //		return new PropnetStateMachine(); // changed to propnet machine
 	}
 
@@ -65,9 +58,29 @@ public class DeepThinker extends StateMachineGamer {
 		machine.getInitialState();
 //		ProverStateMachine machine2 = new ProverStateMachine();
 //		machine2.initialize(getMatch().getGame().getRules());
-//
-//
 //		StateMachineVerifier.checkMachineConsistency(machine2, machine, 20000);
+
+		//dynamically calculate mcsCount.
+		int calculationTime = 1000;
+		int roundLen = getMatch().getPlayClock()*1000 - timeoutPadding;
+		System.out.println("RoundLen is: " + roundLen);
+		mcsCount = 10;
+		while (System.currentTimeMillis() < timeout - calculationTime) {
+			mcsCount++;
+			long start = System.currentTimeMillis();
+			StateMachine machine = getStateMachine();
+			machine.initialize(getMatch().getGame().getRules());
+			Move bestMove = stateMachineSelectMove(timeout - calculationTime);
+			long recordedTime = System.currentTimeMillis() - start;
+			System.out.println("When the mcsCount was: " + mcsCount + ", it took " + recordedTime*1.0/1000 + " seconds.");
+			if (recordedTime >= roundLen || (wasTimedOut)) {
+				System.out.println("When the mcsCount was: " + mcsCount + ", it was cut short.");
+				mcsCount--;
+				System.out.println("Now the mcsCount is: " + mcsCount);
+				wasTimedOut = false;
+				break;
+			}
+		}
 	}
 
 
@@ -101,7 +114,6 @@ public class DeepThinker extends StateMachineGamer {
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
 		depthchargeCount = 0;
 		wasTimedOut = false;
-		System.out.println(limit);
 
 		int calculationTime = 1000;
 		returnBy = timeout - timeoutPadding;
@@ -301,7 +313,7 @@ public class DeepThinker extends StateMachineGamer {
 
 		if (!(timeLeft(1000))) {
 			wasTimedOut = true;
-			return 0;
+			return evalfn(role, state, machine);
 		}
 
 		Random randomizer = new Random();
@@ -324,6 +336,7 @@ public class DeepThinker extends StateMachineGamer {
 		return 100 - mobility(role, state, machine);
 	}
 
+/*
 	public GdlRule prunesubgoals(GdlRule rule) throws SymbolFormatException {
 		List<GdlLiteral> vl = new ArrayList<GdlLiteral>();
 		vl.add(rule.get(0));
@@ -365,18 +378,18 @@ public class DeepThinker extends StateMachineGamer {
 		return false;
 	}
 
-	public GdlRule sublis(GdlRule a, GdlRule b) throws SymbolFormatException {
+	public GdlRule sublis(GdlRule expression, GdlRule bindinglist) throws SymbolFormatException {
 		List<GdlLiteral> c = new ArrayList<GdlLiteral>();
-		for (int i = 0; i < a.arity(); i++) {
+		for (int i = 0; i < expression.arity(); i++) {
 			// detect first variable in a
 			// save the rule structure of a[i]
-			// and variable of b[i]
-			// at c[i]
+			// and variable of b[i] at c[i]
 		}
 		GdlRule result = GdlPool.getRule(GdlFactory.createTerm("rule").toSentence(), c);
 		return result;
 	}
 
+*/
 
 	@Override
 	public void stateMachineStop() {
