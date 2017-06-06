@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -214,7 +215,7 @@ public class PropnetStateMachine extends StateMachine {
 //    			System.out.println("This is a base proposition.");
     			return p.getValue();
     		} else {
-//    			System.out.println("This is a view propositioin.");
+//    			System.out.println("This is a view proposition.");
     			return propMarkP(p.getSingleInput());
     		}
     	}
@@ -268,11 +269,13 @@ public class PropnetStateMachine extends StateMachine {
     @Override
     public int getGoal(MachineState state, Role role)
             throws GoalDefinitionException {
+//    	System.out.println("This state is: " + state.toString());
     	clearPropNet();
     	markBases(state);
     	Set<GdlSentence> contents = state.getContents();
         Map<Role, Set<Proposition>> goals = propNet.getGoalPropositions();
         Set<Proposition> myGoals = goals.get(role);
+
 //        System.out.println(myGoals.size());
         for (Proposition goal: myGoals) {
 //    		System.out.println(goal.toString());
@@ -307,7 +310,17 @@ public class PropnetStateMachine extends StateMachine {
     public List<Move> findActions(Role role)
             throws MoveDefinitionException {
     	//TODO: FIND ACTIONS
-        return null;
+
+        // Set of legal input propositions for this role
+    	Map<GdlSentence, Proposition> moves = new HashMap<GdlSentence, Proposition> (propNet.getInputPropositions());
+        List<Move> toReturn = new ArrayList<Move>();
+        // Propogate input propositions, add them to list of moves if they propogate to true
+        int len = moves.size();
+        for (int i = 0; i < len; i++) {
+        	toReturn.add(getMoveFromProposition(moves.get(i)));
+        }
+
+        return toReturn;
     }
 
 

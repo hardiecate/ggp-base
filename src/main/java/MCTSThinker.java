@@ -43,7 +43,7 @@ public class MCTSThinker extends StateMachineGamer {
 
 	@Override
 	public StateMachine getInitialStateMachine() {
-		return new CachedStateMachine(new ProverStateMachine());
+				return new CachedStateMachine(new ProverStateMachine());
 
 //		return new PropnetStateMachine(); // changed to propnet machine
 	}
@@ -58,11 +58,11 @@ public class MCTSThinker extends StateMachineGamer {
 		machine.initialize(getMatch().getGame().getRules());
 		myRole = getRole();
 		machine.getInitialState();
-//		ProverStateMachine machine2 = new ProverStateMachine();
-//		machine2.initialize(getMatch().getGame().getRules());
-//
-//
-//		StateMachineVerifier.checkMachineConsistency(machine2, machine, 20000);
+		//		ProverStateMachine machine2 = new ProverStateMachine();
+		//		machine2.initialize(getMatch().getGame().getRules());
+		//
+		//
+		//		StateMachineVerifier.checkMachineConsistency(machine2, machine, 20000);
 	}
 
 
@@ -115,16 +115,18 @@ public class MCTSThinker extends StateMachineGamer {
 		}
 
 		//Is this enough padding for our calculations?
-		 while (timeLeft(calculationTime)) {
-			 //STEPS ONE & TWO:
-			 //Do selection routine to find our unvisited starting point
-			 //Also within this method, add successors to the tree
+		while (timeLeft(calculationTime)) {
+			//STEPS ONE & TWO:
+			//Do selection routine to find our unvisited starting point
+			//Also within this method, add successors to the tree
 			MachineState state = select(stateOrigin);
+
 			// Setting the possible scores
 			for (int i = 0; i < numMoves; i++) {
+				//				System.out.println("Exploring move number: " + i);
 				if (!(timeLeft(calculationTime))) {
-  					return chooseMove(possibleScores, possibleMoves);
-  				}
+					return chooseMove(possibleScores, possibleMoves);
+				}
 
 				//STEP THREE:
 				//Same simulation routine w/ random action choices until
@@ -147,7 +149,9 @@ public class MCTSThinker extends StateMachineGamer {
 			}
 		}
 
-			System.out.println("Depth charge count: " + depthchargeCount);
+		System.out.println("Depth charge count: " + depthchargeCount);
+		visited.clear();
+		parents.clear();
 		return chooseMove(possibleScores, possibleMoves);
 
 	}
@@ -203,7 +207,12 @@ public class MCTSThinker extends StateMachineGamer {
 	}
 
 	public int selectfn(MachineState node, MachineState parent) throws MoveDefinitionException, GoalDefinitionException {
-		return (int)((1.0*evalfn(myRole, node, machine)) + Math.sqrt(2*Math.log(visited.get(parent))))/(visited.get(node));
+		int result = (int)((1.0*utility.get(node)/(1.0*visited.get(node))) + Math.sqrt(2*Math.log(visited.get(parent))))/(visited.get(node));
+		System.out.println("Utility is: " + utility.get(node));
+		System.out.println("Visit count is: " + visited.get(node));
+		System.out.println("Parent visit count is: " + visited.get(parent));
+		System.out.println();
+		return (int)((1.0*utility.get(node)/(1.0*visited.get(node))) + Math.sqrt(2*Math.log(visited.get(parent))))/(visited.get(node));
 	}
 
 	public MachineState select(MachineState node) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
@@ -233,116 +242,131 @@ public class MCTSThinker extends StateMachineGamer {
 				return child;
 			}
 		}
-	  int score = 0;
-	  MachineState result = node;
+		int score = 0;
+		MachineState result = node;
 
-	  // All children have been visited. Find highest score among children.
-	  for (MachineState child: children) {
-	      int newscore = selectfn(child, node);
-	      if (newscore>score) {
-	          score = newscore;
-	          result=child;
-	      }
-	  }
-	  return select(result);
-  }
+		// All children have been visited. Find highest score among children.
+		for (MachineState child: children) {
+			int newscore = selectfn(child, node);
+			if (newscore>score) {
+				score = newscore;
+				result=child;
+			}
+		}
+		return select(result);
+	}
 
-//	public boolean expand (MachineState node) throws MoveDefinitionException {
-//		List<Move> actions = machine.getLegalMoves(node, myRole);
-//		for (Move action: actions) {
-//			List<Move> moves = machine.getLegalJointMoves(node, myRole, move);
-//			moves.add(action);
-//			MachineState newstate = machine.getNextState(node, moves);
-//		}
-//		return false;
-//	}
+	//	public boolean expand (MachineState node) throws MoveDefinitionException {
+	//		List<Move> actions = machine.getLegalMoves(node, myRole);
+	//		for (Move action: actions) {
+	//			List<Move> moves = machine.getLegalJointMoves(node, myRole, move);
+	//			moves.add(action);
+	//			MachineState newstate = machine.getNextState(node, moves);
+	//		}
+	//		return false;
+	//	}
 
 	public boolean backpropogate(MachineState node,  int score) {
 		if (visited.containsKey(node)) {
 			visited.put(node, visited.get(node) + 1);
 			utility.put(node, utility.get(node) + score);
-			List<MachineState> pars = parents.get(node);
+		} else {
+			visited.put(node,  1);
+			utility.put(node, score);
+		}
+		List<MachineState> pars = parents.get(node);
+		if (pars != null) {
 			for (MachineState parent : pars) {
 				if (!(timeLeft(1000))) {
-  					return true;
-  				}
+					return true;
+				}
 				backpropogate(parent, score);
 			}
 		}
+
 		return true;
+}
+
+public int montecarlo(Role role, MachineState state, StateMachine machine) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+	int total = 0;
+	for (int i = 0; i < mcsCount; i++) {
+		int charge = depthcharge(role, state, machine);
+		total = total + charge;
+	}
+	return (int) (1.0*total/mcsCount);
+
+}
+
+public int depthcharge (Role role, MachineState state, StateMachine machine) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+	depthchargeCount++;
+
+	if (machine.isTerminal(state)) {
+		//			System.out.println("reached a terminal state, about to return: " + machine.getGoal(state,  role));
+		return machine.getGoal(state, role);
 	}
 
-	public int montecarlo(Role role, MachineState state, StateMachine machine) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
-		int total = 0;
-		for (int i = 0; i < mcsCount; i++) {
-			int charge = depthcharge(role, state, machine);
-			total = total + charge;
-		}
-		return (int) (1.0*total/mcsCount);
+	//	    if (System.currentTimeMillis() >= returnBy) {
+	//	    	wasTimedOut = true;
+	//	    	System.out.println("We timed out!");
+	//	        return 0;
+	//	    }
 
+	if (!(timeLeft(1000))) {
+		//			System.out.println("ran out of time, about to return: 0");
+		wasTimedOut = true;
+		//			return evalfn(role, state, machine);
+		return 0;
 	}
 
-	public int depthcharge (Role role, MachineState state, StateMachine machine) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
-		depthchargeCount++;
-
-		if (machine.isTerminal(state)) {
-			return machine.getGoal(state, role);
-		}
-
-//	    if (System.currentTimeMillis() >= returnBy) {
-//	    	wasTimedOut = true;
-//	    	System.out.println("We timed out!");
-//	        return 0;
-//	    }
-
-		if (!(timeLeft(1000))) {
-			wasTimedOut = true;
-			return 0;
-		}
-
-		Random randomizer = new Random();
-//		System.out.println("right before getlegaljointmoves");
-		List<List<Move>> legalJointMoves = machine.getLegalJointMoves(state);
-		int random = randomizer.nextInt(legalJointMoves.size());
-		List<Move> randomRound = legalJointMoves.get(random);
-		MachineState newstate = machine.getNextState(state, randomRound);
-		return depthcharge(role, newstate, machine);
-	}
+	Random randomizer = new Random();
+	//		System.out.println("right before getlegaljointmoves");
+	List<List<Move>> legalJointMoves = machine.getLegalJointMoves(state);
+	int random = randomizer.nextInt(legalJointMoves.size());
+	List<Move> randomRound = legalJointMoves.get(random);
+	MachineState newstate = machine.getNextState(state, randomRound);
+//	System.out.println("Old state: " + state.toString());
+//	System.out.println("New state: " + newstate.toString());
+//	System.out.println();
+	return depthcharge(role, newstate, machine);
+}
 
 
-	public int mobility(Role role, MachineState state, StateMachine machine) throws MoveDefinitionException {
-		List<Move> actions = machine.getLegalMoves(state, role);
-		List<Move> feasibles = machine.findActions(role);
-		return (int)((double)actions.size()/(double)feasibles.size() * 100);
-	}
+public int mobility(Role role, MachineState state, StateMachine machine) throws MoveDefinitionException {
+	List<Move> actions = machine.getLegalMoves(state, role);
 
-	public int focus(Role role, MachineState state, StateMachine machine) throws MoveDefinitionException {
-		return 100 - mobility(role, state, machine);
-	}
+	List<Move> feasibles = machine.findActions(role);
+	int mobility = (int)((double)actions.size()/(double)feasibles.size() * 100);
+	//		System.out.println(mobility);
+	return mobility;
+}
+
+public int focus(Role role, MachineState state, StateMachine machine) throws MoveDefinitionException {
+	return 100 - mobility(role, state, machine);
+}
 
 
-	@Override
-	public void stateMachineStop() {
-		// TODO Auto-generated method stub
+@Override
+public void stateMachineStop() {
+	// TODO Auto-generated method stub
 
-	}
+}
 
-	@Override
-	public void stateMachineAbort() {
-		// TODO Auto-generated method stub
+@Override
+public void stateMachineAbort() {
+	// TODO Auto-generated method stub
 
-	}
+}
 
-	@Override
-	public void preview(Game g, long timeout) throws GamePreviewException {
-		// TODO Auto-generated method stub
+@Override
+public void preview(Game g, long timeout) throws GamePreviewException {
+	// TODO Auto-generated method stub
 
-	}
+}
 
-	@Override
-	public String getName() {
-		// TODO Auto-generated method stub
-		return "MCTSThinker";
-	}
+@Override
+public String getName() {
+	// TODO Auto-generated method stub
+	return "MCTSThinker";
+}
 
 }
