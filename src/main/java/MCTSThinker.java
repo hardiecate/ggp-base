@@ -13,11 +13,9 @@ import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
 import org.ggp.base.util.statemachine.StateMachine;
-import org.ggp.base.util.statemachine.cache.CachedStateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
-import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
 // Makes a fixed depth without heuristics move
 
@@ -39,13 +37,14 @@ public class MCTSThinker extends StateMachineGamer {
 	Map<MachineState, Integer> visited = new HashMap<MachineState, Integer>();
 	Map<MachineState, Integer> utility = new HashMap<MachineState, Integer>();
 	Map<MachineState, List<MachineState>> parents = new HashMap<MachineState, List<MachineState>>();
+	Map<MachineState, List<MachineState>> children = new HashMap<MachineState, List<MachineState>>();
 	int depthchargeCount;
 
 	@Override
 	public StateMachine getInitialStateMachine() {
-				return new CachedStateMachine(new ProverStateMachine());
+//				return new CachedStateMachine(new ProverStateMachine());
 
-//		return new PropnetStateMachine(); // changed to propnet machine
+		return new PropnetStateMachine(); // changed to propnet machine
 	}
 
 
@@ -83,6 +82,7 @@ public class MCTSThinker extends StateMachineGamer {
 		}
 
 		System.out.println("Depth charge count: " + depthchargeCount);
+		depthchargeCount = 0;
 		return bestChoice;
 	}
 
@@ -120,6 +120,7 @@ public class MCTSThinker extends StateMachineGamer {
 			//Do selection routine to find our unvisited starting point
 			//Also within this method, add successors to the tree
 			MachineState state = select(stateOrigin);
+			if (!expand(state)) continue;
 
 			// Setting the possible scores
 			for (int i = 0; i < numMoves; i++) {
@@ -217,10 +218,10 @@ public class MCTSThinker extends StateMachineGamer {
 
 	public MachineState select(MachineState node) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
 		if (!(visited.containsKey(node))) {return node;}
-		List<MachineState> children = machine.getNextStates(node);
+		List<MachineState> myChildren = children.get(node);
 
 		// Update the parents list
-		for (MachineState child : children) {
+		for (MachineState child : myChildren) {
 			if (parents.containsKey(child)) {
 				if (!(parents.get(child).contains(node))) {
 					List<MachineState> pars = parents.get(child);
@@ -237,16 +238,16 @@ public class MCTSThinker extends StateMachineGamer {
 		}
 
 		// Return first child that has not been visited yet
-		for (MachineState child : children) {
+		for (MachineState child : myChildren) {
 			if (!(visited.containsKey(child))) {
 				return child;
 			}
 		}
-		int score = 0;
+		int score = Integer.MIN_VALUE;
 		MachineState result = node;
 
 		// All children have been visited. Find highest score among children.
-		for (MachineState child: children) {
+		for (MachineState child: myChildren) {
 			int newscore = selectfn(child, node);
 			if (newscore>score) {
 				score = newscore;
@@ -256,15 +257,36 @@ public class MCTSThinker extends StateMachineGamer {
 		return select(result);
 	}
 
-	//	public boolean expand (MachineState node) throws MoveDefinitionException {
-	//		List<Move> actions = machine.getLegalMoves(node, myRole);
-	//		for (Move action: actions) {
-	//			List<Move> moves = machine.getLegalJointMoves(node, myRole, move);
-	//			moves.add(action);
-	//			MachineState newstate = machine.getNextState(node, moves);
-	//		}
-	//		return false;
-	//	}
+		public boolean expand (MachineState node) throws MoveDefinitionException, TransitionDefinitionException {
+			if (machine.isTerminal(node)) {
+				if (children.containsKey(node)) {
+					children.remove(node);
+
+				}
+				//			System.out.println("reached a terminal state, about to return: " + machine.getGoal(state,  role));
+				return false;
+			}
+
+			List<Move> actions = machine.getLegalMoves(node, myRole);
+			for (Move action: actions) {
+				List<List<Move>> moves = machine.getLegalJointMoves(node, myRole, action);
+//				moves.add(action);
+				for (List<Move> scenario : moves) {
+					MachineState newstate = machine.getNextState(node, scenario);
+					if (children.containsKey(node)) {
+						List<MachineState> childs = children.get(node);
+						childs.add(newstate);
+						children.put(node, childs);
+					} else {
+						List<MachineState> childs = new ArrayList<MachineState> ();
+						childs.add(newstate);
+						children.put(node, childs);
+					}
+				}
+
+			}
+			return true;
+		}
 
 	public boolean backpropogate(MachineState node,  int score) {
 		if (visited.containsKey(node)) {
@@ -288,7 +310,15 @@ public class MCTSThinker extends StateMachineGamer {
 }
 
 public int montecarlo(Role role, MachineState state, StateMachine machine) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+	if (machine.isTerminal(state)) {
+		System.out.println("montecarlo was given a terminal state");
+		//			System.out.println("reached a terminal state, about to return: " + machine.getGoal(state,  role));
+		return machine.getGoal(state, role);
+	}
+
+
 	int total = 0;
+
 	for (int i = 0; i < mcsCount; i++) {
 		int charge = depthcharge(role, state, machine);
 		total = total + charge;
@@ -298,9 +328,12 @@ public int montecarlo(Role role, MachineState state, StateMachine machine) throw
 }
 
 public int depthcharge (Role role, MachineState state, StateMachine machine) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
-	depthchargeCount++;
+
 
 	if (machine.isTerminal(state)) {
+		depthchargeCount++;
+		System.out.println("Terminal state:");
+		System.out.println("Returning: " + machine.getGoal(state, role));
 		//			System.out.println("reached a terminal state, about to return: " + machine.getGoal(state,  role));
 		return machine.getGoal(state, role);
 	}
@@ -327,6 +360,7 @@ public int depthcharge (Role role, MachineState state, StateMachine machine) thr
 //	System.out.println("Old state: " + state.toString());
 //	System.out.println("New state: " + newstate.toString());
 //	System.out.println();
+
 	return depthcharge(role, newstate, machine);
 }
 
@@ -368,5 +402,163 @@ public String getName() {
 	// TODO Auto-generated method stub
 	return "MCTSThinker";
 }
+
+//
+//public GdlRule prunesubgoals(GdlRule rule) throws SymbolFormatException {
+//	List<GdlLiteral> vl = new ArrayList<GdlLiteral>();
+//	vl.add(rule.get(0));
+//	List<GdlLiteral> newrule = new ArrayList<GdlLiteral>();
+//	newrule.add(rule.get(0));
+//	for (int i = 2; i < rule.arity(); i++) {
+//		List<GdlLiteral> sl = newrule;
+//		for (int x = i + 1; x < rule.arity(); x++) {
+//			sl.add(rule.get(x));
+//		}
+//		GdlRule arg1 = GdlPool.getRule(GdlFactory.createTerm("rule").toSentence(), sl);
+//		GdlLiteral arg2 = rule.get(i);
+//		GdlRule arg3 = GdlPool.getRule(GdlFactory.createTerm("rule").toSentence(), vl);
+//	    if (!pruneworthyp(arg1, arg2, arg3)) {
+//	    	newrule.add(rule.get(i));
+//		}
+//	};
+//	GdlRule result = GdlPool.getRule(GdlFactory.createTerm("rule").toSentence(), newrule);
+//	return result;
+//	}
+//
+//public boolean pruneworthyp (GdlRule sl, GdlLiteral p, GdlRule vl) {
+//	vl = varsexp(sl, vl.getBody());
+//	HashMap<GdlLiteral, String> al = new HashMap<GdlLiteral, String>();
+//	for (int i=0; i < vl.arity(); i++) {
+//		Integer x = i;
+//		al.put(vl.get(i), "x" + x.toString());
+//		// but vl is just one variable long.. see prunesubgoals
+//	}
+//	GdlRule facts = sublis(sl,al);
+//	GdlRule goal = sublis(p,al); // how are we putting p in as well when p and sl have different types?
+//	return compfindp(goal,facts);
+//}
+//
+//public boolean compfindp(GdlRule goal, GdlRule facts) {
+//	for (int i = 0; i < facts.arity(); i++) {
+//		if (goal.get(0) == facts.get(i)) return true;
+//	}
+//	return false;
+//}
+//
+//public GdlRule sublis(GdlRule a, GdlRule b) throws SymbolFormatException {
+//	List<GdlLiteral> c = new ArrayList<GdlLiteral>();
+//	for (int i = 0; i < a.arity(); i++) {
+//		// detect first variable in a
+//		// save the rule structure of a[i]
+//		// and variable of b[i]
+//		// at c[i]
+//	}
+//	GdlRule result = GdlPool.getRule(GdlFactory.createTerm("rule").toSentence(), c);
+//	return result;
+//}
+//
+//
+//
+//
+//
+//
+//public List<GdlRule> prunerules (List<Gdl> list) {
+//	List<GdlRule> rules = new ArrayList<GdlRule>();
+//
+//
+//	for (Gdl g : list) {
+//		if (g.toString().indexOf("( <= (") == 0) {
+//			rules.add((GdlRule) g);
+//		}
+//	}
+//
+//
+//	List<GdlRule> newRules = new ArrayList<GdlRule>();
+//	for (int i = 0; i < rules.size(); i++) {
+//
+//		if (!subsumedp(rules.get(i), newRules) && (!(subsumedp(rules.get(i), rules.subList(i+1, rules.size()))))) {
+//			newRules.add(rules.get(i));
+//		}
+//	}
+//	return newRules;
+//}
+//
+//public boolean subsumedp (GdlRule rule, List<GdlRule> rules) {
+//	for (int i = 0; i < rules.size(); i++) {
+//		if (subsumesp(rules.get(i), rule)) {
+//			return true;
+//		}
+//	}
+//	return false;
+//}
+//
+//public boolean subsumesp (GdlRule pRule, GdlRule qRule) {
+//
+//	List<GdlLiteral> p = pRule.getBody();
+//	List<GdlLiteral> q = qRule.getBody();
+//	System.out.println(q.toString());
+//	System.out.println(p.toString());
+//	System.out.println();
+//
+//	if (p.equals(q)) {
+//		return true;
+//	}
+//
+//	// if (symbolp(p) || symbolp(q)) {
+//	//	return false;
+//	// }
+//
+//	for (GdlLiteral pLit : p) {
+//		for (GdlLiteral qLit : q) {
+//			Map<String, String> al = matcher(pLit, qLit);
+//			if (al != null && subsumesexp(p.subList(1, p.size()), q.subList(1, q.size()), al)) {
+//				return true;
+//			}
+//		}
+//	}
+//
+//	return false;
+//}
+//
+//
+//public boolean subsumesexp (List<GdlLiteral> pl, List<GdlLiteral> QL, Map<String, String> AL) {
+//	if (pl.size() == 0) {
+//		return true;
+//	}
+//	for (int i = 0; i < QL.size(); i++) {
+//		Map<String, String> bl = matcher(pl.get(0), QL.get(i)/*, AL*/);
+//		if (bl != null && subsumesexp(pl.subList(1, pl.size()), QL, bl)) {
+//			return true;
+//		}
+//	}
+//	return false;
+//}
+//
+//public Map<String, String> matcher (GdlLiteral p, GdlLiteral q) {
+//	System.out.println("Now in matcher");
+//
+//	Map<String, String> toReturn = new HashMap<String, String>();
+//	String[] pString = p.toString().split(" ");
+//	String[] qString = q.toString().split(" ");
+//	System.out.println("Literal string for p: ");
+//	for (String s : pString) {
+//		if (s.contains("?")) {
+//			System.out.println(s);
+//		}
+//	}
+//	System.out.println("Literal string for q: ");
+//	for (String s : qString) {
+//		if (s.contains("?")) {
+//			System.out.println(s);
+//		}
+//	}
+//	System.out.println();
+//
+//
+//	if (toReturn.size() == 0) {
+//		return null;
+//	}
+//	return toReturn;
+//}
 
 }

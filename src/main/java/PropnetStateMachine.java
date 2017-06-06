@@ -286,6 +286,7 @@ public class PropnetStateMachine extends StateMachine {
         	}
 //        	return getGoalValue(goal);
         }
+        System.out.println("About to return 0");
         return 0;
     }
 
