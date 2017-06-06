@@ -9,8 +9,10 @@ import org.ggp.base.apps.player.Player;
 import org.ggp.base.player.gamer.exception.GamePreviewException;
 import org.ggp.base.player.gamer.statemachine.StateMachineGamer;
 import org.ggp.base.util.game.Game;
+import org.ggp.base.util.gdl.factory.GdlFactory;
 import org.ggp.base.util.gdl.grammar.Gdl;
 import org.ggp.base.util.gdl.grammar.GdlLiteral;
+import org.ggp.base.util.gdl.grammar.GdlPool;
 import org.ggp.base.util.gdl.grammar.GdlRule;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
@@ -21,6 +23,7 @@ import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
+import org.ggp.base.util.symbol.factory.exceptions.SymbolFormatException;
 
 // Makes a fixed depth without heuristics move
 
@@ -107,7 +110,6 @@ public class DeepThinker extends StateMachineGamer {
 
 		int calculationTime = 1000;
 		returnBy = timeout - timeoutPadding;
-
 
 		MachineState stateOrigin = getCurrentState();
 		long start = System.currentTimeMillis();
@@ -326,6 +328,59 @@ public class DeepThinker extends StateMachineGamer {
 
 	public int focus(Role role, MachineState state, StateMachine machine) throws MoveDefinitionException {
 		return 100 - mobility(role, state, machine);
+	}
+
+	public GdlRule prunesubgoals(GdlRule rule) throws SymbolFormatException {
+		List<GdlLiteral> vl = new ArrayList<GdlLiteral>();
+		vl.add(rule.get(0));
+		List<GdlLiteral> newrule = new ArrayList<GdlLiteral>();
+		newrule.add(rule.get(0));
+		for (int i = 2; i < rule.arity(); i++) {
+			List<GdlLiteral> sl = newrule;
+			for (int x = i + 1; x < rule.arity(); x++) {
+				sl.add(rule.get(x));
+			}
+			GdlRule arg1 = GdlPool.getRule(GdlFactory.createTerm("rule").toSentence(), sl);
+			GdlLiteral arg2 = rule.get(i);
+			GdlRule arg3 = GdlPool.getRule(GdlFactory.createTerm("rule").toSentence(), vl);
+		    if (!pruneworthyp(arg1, arg2, arg3)) {
+		    	newrule.add(rule.get(i));
+			}
+		};
+		GdlRule result = GdlPool.getRule(GdlFactory.createTerm("rule").toSentence(), newrule);
+		return result;
+  	}
+
+	public boolean pruneworthyp (GdlRule sl, GdlLiteral p, GdlRule vl) {
+		vl = varsexp(sl, vl.getBody());
+		HashMap<GdlLiteral, String> al = new HashMap<GdlLiteral, String>();
+		for (int i=0; i < vl.arity(); i++) {
+			Integer x = i;
+			al.put(vl.get(i), "x" + x.toString());
+			// but vl is just one variable long.. see prunesubgoals
+		}
+		GdlRule facts = sublis(sl,al);
+		GdlRule goal = sublis(p,al); // how are we putting p in as well when p and sl have different types?
+		return compfindp(goal,facts);
+	}
+
+	public boolean compfindp(GdlRule goal, GdlRule facts) {
+		for (int i = 0; i < facts.arity(); i++) {
+			if (goal.get(0) == facts.get(i)) return true;
+		}
+		return false;
+	}
+
+	public GdlRule sublis(GdlRule a, GdlRule b) throws SymbolFormatException {
+		List<GdlLiteral> c = new ArrayList<GdlLiteral>();
+		for (int i = 0; i < a.arity(); i++) {
+			// detect first variable in a
+			// save the rule structure of a[i]
+			// and variable of b[i]
+			// at c[i]
+		}
+		GdlRule result = GdlPool.getRule(GdlFactory.createTerm("rule").toSentence(), c);
+		return result;
 	}
 
 

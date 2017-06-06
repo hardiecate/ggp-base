@@ -18,7 +18,7 @@ public final class GdlRule extends Gdl
 		this.body = body;
 		ground = null;
 	}
-
+	
 	public int arity()
 	{
 		return body.size();
