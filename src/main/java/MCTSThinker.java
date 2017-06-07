@@ -278,6 +278,10 @@ public class MCTSThinker extends StateMachineGamer {
 	}
 
 		public boolean expand (MachineState node) throws MoveDefinitionException, TransitionDefinitionException {
+			if (machine.isTerminal(node)) {
+				return false;
+			}
+
 			List<List<Move>> moves = machine.getLegalJointMoves(node);
 			for (List<Move> scenario : moves) {
 				MachineState newstate = machine.getNextState(node, scenario);
@@ -320,6 +324,9 @@ public int montecarlo(Role role, MachineState state, StateMachine machine) throw
 	if (machine.isTerminal(state)) {
 		System.out.println("montecarlo was given a terminal state");
 		//			System.out.println("reached a terminal state, about to return: " + machine.getGoal(state,  role));
+		if (role == null) {
+			System.out.println("Our role was null for some reason.");
+		}
 		return machine.getGoal(state, role);
 	}
 
@@ -350,12 +357,12 @@ public int depthcharge (Role role, MachineState state, StateMachine machine, Lis
 	visited.add(state);
 
 	if (!(timeLeft(1000))) {
-		int num = 0;
-		if (machine.getRoles().size() > 1) {
-			num = evalfn(role, state, machine);
-		} else {
-			num = machine.getGoal(state, role);
-		}
+
+//		if (machine.getRoles().size() > 1) {
+//			num = evalfn(role, state, machine);
+//		} else {
+		int num = machine.getGoal(state, role);
+//		}
 		System.out.println("ran out of time, about to return: " + num);
 		depthchargeCount++;
 		//			return evalfn(role, state, machine);
