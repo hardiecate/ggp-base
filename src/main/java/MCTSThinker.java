@@ -331,19 +331,20 @@ public int montecarlo(Role role, MachineState state, StateMachine machine) throw
 }
 
 public int depthcharge (Role role, MachineState state, StateMachine machine, List<MachineState> visited) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
-	if (visited.contains(state)) {
+	//if (visited.contains(state)) {
 //		System.out.println("Visited Contains");
-		return 0;
-	}
-	visited.add(state);
+	//	return 0;
+	//}
 
-	if (machine.isTerminal(state)) {
+	if (machine.isTerminal(state) || visited.contains(state)) {
 		depthchargeCount++;
 //		System.out.println("Terminal state:");
 //		System.out.println("Returning: " + machine.getGoal(state, role));
 		//			System.out.println("reached a terminal state, about to return: " + machine.getGoal(state,  role));
 		return machine.getGoal(state, role);
 	}
+	visited.add(state);
+
 	if (!(timeLeft(1000))) {
 		System.out.println("ran out of time, about to return: 0");
 		wasTimedOut = true;
