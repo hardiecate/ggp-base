@@ -224,22 +224,10 @@ public class MCTSThinker extends StateMachineGamer {
 	}
 
 	public MachineState select(MachineState node) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
-		if (!(node.getVisits() == 0)) {
+		if (node.getVisits() == 0) {
 			return node;
 		}
 		List<MachineState> myChildren = node.getChildren();
-
-		if (myChildren == null) {
-			return node;
-		}
-
-		// Update the parents list
-		for (MachineState child : myChildren) {
-			List<MachineState> pars = child.getParents();
-			if (!pars.contains(node)) {
-				child.addParent(node);
-			}
-		}
 
 		// Return first child that has not been visited yet
 		for (MachineState child : myChildren) {
@@ -279,12 +267,25 @@ public class MCTSThinker extends StateMachineGamer {
 				for (List<Move> scenario : moves) {
 					MachineState newstate = machine.getNextState(node, scenario);
 					List<MachineState> childNodes = node.getChildren();
-					if (childNodes != null && !childNodes.contains(newstate)) {
-						node.addChild(newstate);
+
+					if (childNodes != null) {
+						if (!childNodes.contains(newstate)) {
+							node.addChild(newstate);
+						}
 					} else {
 						List<MachineState> newChildren = new ArrayList<MachineState>();
 						newChildren.add(newstate);
 						node.setChildren(newChildren);
+					}
+
+					if (newstate.getParents() != null) {
+						if (!newstate.getParents().contains(node)) {
+							newstate.addParent(node);
+						}
+					} else {
+						List<MachineState> newParents = new ArrayList<MachineState>();
+						newParents.add(node);
+						newstate.setParents(newParents);
 					}
 				}
 
