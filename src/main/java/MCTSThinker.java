@@ -40,7 +40,7 @@ public class MCTSThinker extends StateMachineGamer {
 	public StateMachine getInitialStateMachine() {
 		return new CachedStateMachine(new ProverStateMachine());
 
-//		return new PropnetStateMachine(); // changed to propnet machine
+		//return new PropnetStateMachine(); // changed to propnet machine
 	}
 
 
@@ -267,13 +267,14 @@ public class MCTSThinker extends StateMachineGamer {
 		node.setVisits(visitsSoFar + 1);
 		int utilSoFar = node.getUtility();
 		node.setUtility(utilSoFar + score);
-		System.out.println("updated visits and util in backpropogate");
 		List<MachineState> pars = node.getParents();
 		if (pars != null) {
 			for (MachineState parent : pars) {
 				if (!(timeLeft(1000))) {
 					return true;
 				}
+				List<MachineState> children = node.getChildren();
+				if (children != null && children.contains(parent)) continue;
 				backpropogate(parent, score);
 			}
 		}
