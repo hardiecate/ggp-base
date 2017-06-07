@@ -130,11 +130,7 @@ public class MCTSThinker extends StateMachineGamer {
 
 		}
 
-		//Is this enough padding for our calculations?
 		while (timeLeft(calculationTime)) {
-			//STEPS ONE & TWO:
-			//Do selection routine to find our unvisited starting point
-			//Also within this method, add successors to the tree
 			MachineState state = select(origin);
 			if (state == null) {
 				return chooseMove(possibleMoves);
@@ -244,10 +240,6 @@ public class MCTSThinker extends StateMachineGamer {
 
 		public boolean expand (MachineState node) throws MoveDefinitionException, TransitionDefinitionException {
 			System.out.println("expand executed");
-			if (machine.isTerminal(node)) {
-				return false;
-			}
-
 			List<List<Move>> moves = machine.getLegalJointMoves(node);
 			for (List<Move> scenario : moves) {
 				MachineState newstate = machine.getNextState(node, scenario);
@@ -266,7 +258,6 @@ public class MCTSThinker extends StateMachineGamer {
 		}
 
 	public boolean backpropogate(MachineState node,  int score) {
-		System.out.println("backprop executed");
 		allNodes.add(node);
 		node.setVisits(node.getVisits() + 1);
 		node.setUtility(node.getUtility() + score);
@@ -295,7 +286,6 @@ public class MCTSThinker extends StateMachineGamer {
 }
 
 public int montecarlo(Role role, MachineState state, StateMachine machine) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
-	System.out.println("montecarlo executed");
 	int total = 0;
 	for (int i = 0; i < mcsCount; i++) {
 		total = total + depthcharge(role, state, machine, new ArrayList<MachineState>());
@@ -321,10 +311,8 @@ public int montecarlo(Role role, MachineState state, StateMachine machine) throw
 }
 
 public int depthcharge (Role role, MachineState state, StateMachine machine, List<MachineState> visited) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
-	System.out.println("depthcharge executed");
 	if (machine.findTerminalp(state)) {
 		depthchargeCount++;
-		System.out.println("terminal goal is " + machine.findReward(role, state));
 		return machine.findReward(role, state);
 	};
 	if (!timeLeft(0)) {
