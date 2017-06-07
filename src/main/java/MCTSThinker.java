@@ -35,6 +35,7 @@ public class MCTSThinker extends StateMachineGamer {
 	StateMachine machine = null;
 	Role myRole = null;
 	int depthchargeCount;
+	MachineState origin = null;
 
 	@Override
 	public StateMachine getInitialStateMachine() {
@@ -61,7 +62,18 @@ public class MCTSThinker extends StateMachineGamer {
 	}
 
 
-	public Move chooseMove(List<Integer> possibleScores, List<Move> possibleMoves) {
+	public Move chooseMove(List<Move> possibleMoves) throws MoveDefinitionException, GoalDefinitionException, TransitionDefinitionException {
+
+		List<Integer> possibleScores = new ArrayList<Integer>();
+		for (Move m : possibleMoves) {
+			List<List<Move>> jointmoves = machine.getLegalJointMoves(origin, myRole, m);
+			int total = 0;
+			for (List<Move> p : jointmoves) {
+				MachineState childState = machine.getNextState(origin, p);
+				total += selectfn(childState, origin);
+			}
+			possibleScores.add((int) ((double)total / jointmoves.size()));
+		}
 
 		// Choosing the move that correlates to the highest montecarlo score
 		Move bestChoice = null;
@@ -98,9 +110,9 @@ public class MCTSThinker extends StateMachineGamer {
 		returnBy = timeout - timeoutPadding;
 
 
-		MachineState stateOrigin = getCurrentState();
+		origin = getCurrentState();
 		long start = System.currentTimeMillis();
-		List<Move> possibleMoves = machine.getLegalMoves(stateOrigin, myRole);
+		List<Move> possibleMoves = machine.getLegalMoves(origin, myRole);
 		// Creates a list of the same size as possibleMoves, all populated with 0s
 		List<Integer> possibleScores = new ArrayList<Integer>((Collections.nCopies(possibleMoves.size(), 0)));
 		int numMoves = possibleMoves.size();
@@ -115,12 +127,19 @@ public class MCTSThinker extends StateMachineGamer {
 			//STEPS ONE & TWO:
 			//Do selection routine to find our unvisited starting point
 			//Also within this method, add successors to the tree
-			MachineState state = select(stateOrigin);
+			MachineState state = select(origin);
 			if (!expand(state)) continue;
-			for (MachineState child: state.getChildren()) {
+//			for (MachineState child: state.getChildren()) {
+			System.out.println("Number of moves available: " + numMoves);
+			System.out.println("This should be the same number?: " + state.getChildren().size());
+			for (int j = 0; j < state.getChildren().size(); j++) {
+				MachineState child = state.getChildren().get(j);
 				int score = montecarlo(myRole, child, machine);
-				System.out.println("finished monte carlo");
+//				possibleScores.set(j, score);
+				System.out.println("Montecarlo's final score: " + score);
+//				System.out.println("finished monte carlo");
 				backpropogate(state, score);
+
 			}
 
 
@@ -157,7 +176,7 @@ public class MCTSThinker extends StateMachineGamer {
 		System.out.println("Depth charge count: " + depthchargeCount);
 		//visited.clear();
 		//parents.clear();
-		return chooseMove(possibleScores, possibleMoves);
+		return chooseMove(possibleMoves);
 
 	}
 
@@ -191,7 +210,7 @@ public class MCTSThinker extends StateMachineGamer {
 		if (opp > player) {
 			//if our score went down from the last round
 			if (player < last_player_score) {
-				System.out.println("Switching strategies!");;
+//				System.out.println("Switching strategies!");
 				restrict = !restrict;
 				if (restrict) {
 					w2 = w1; // Not sure why we kept cutting this factor in half
@@ -232,7 +251,7 @@ public class MCTSThinker extends StateMachineGamer {
 		}
 		int score = Integer.MIN_VALUE;
 		MachineState result = node;
-
+//		System.out.println("result at first is: " + result);
 		// All children have been visited. Find highest score among children.
 		for (MachineState child: myChildren) {
 			int newscore = selectfn(child, node);
@@ -241,6 +260,7 @@ public class MCTSThinker extends StateMachineGamer {
 				result=child;
 			}
 		}
+//		System.out.println("result is: " + result);
 		return select(result);
 	}
 
@@ -278,7 +298,7 @@ public class MCTSThinker extends StateMachineGamer {
 				backpropogate(parent, score);
 			}
 		}
-		System.out.println("returning from backpropogate fn");
+//		System.out.println("returning from backpropogate fn");
 		return true;
 }
 
@@ -293,9 +313,9 @@ public int montecarlo(Role role, MachineState state, StateMachine machine) throw
 	int total = 0;
 
 	for (int i = 0; i < mcsCount; i++) {
-		System.out.println("before depth");
+//		System.out.println("before depth");
 		int charge = depthcharge(role, state, machine, new ArrayList<MachineState>());
-		System.out.println("after depth");
+//		System.out.println("after depth");
 		total = total + charge;
 	}
 	return (int) (1.0*total/mcsCount);
@@ -311,7 +331,7 @@ public int depthcharge (Role role, MachineState state, StateMachine machine, Lis
 
 	if (machine.isTerminal(state)) {
 		depthchargeCount++;
-		System.out.println("Terminal state:");
+//		System.out.println("Terminal state:");
 		System.out.println("Returning: " + machine.getGoal(state, role));
 		//			System.out.println("reached a terminal state, about to return: " + machine.getGoal(state,  role));
 		return machine.getGoal(state, role);
