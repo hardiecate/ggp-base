@@ -1,7 +1,9 @@
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 import org.ggp.base.apps.player.Player;
 import org.ggp.base.player.gamer.exception.GamePreviewException;
@@ -28,7 +30,6 @@ public class MCTSThinker extends StateMachineGamer {
 	double last_player_score = 0;
 	boolean restrict = true;
 	int timeoutPadding = 2000;
-	boolean wasTimedOut = false;
 	int mcsCount = 100;
 	long returnBy;
 	Move bestSoFar = null;
@@ -36,6 +37,7 @@ public class MCTSThinker extends StateMachineGamer {
 	Role myRole = null;
 	int depthchargeCount;
 	MachineState origin = null;
+	Set<MachineState> allNodes = new HashSet<MachineState>();
 
 	@Override
 	public StateMachine getInitialStateMachine() {
@@ -91,6 +93,10 @@ public class MCTSThinker extends StateMachineGamer {
 
 		System.out.println("Depth charge count: " + depthchargeCount);
 		depthchargeCount = 0;
+		for (MachineState node : allNodes) {
+			node.clearAll();
+		}
+		allNodes.clear();
 		return bestChoice;
 	}
 
@@ -103,7 +109,6 @@ public class MCTSThinker extends StateMachineGamer {
 	public Move stateMachineSelectMove(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
 		depthchargeCount = 0;
-		wasTimedOut = false;
 //		System.out.println(limit);
 
 		int calculationTime = 1000;
@@ -139,7 +144,7 @@ public class MCTSThinker extends StateMachineGamer {
 				MachineState child = state.getChildren().get(j);
 				int score = montecarlo(myRole, child, machine);
 //				possibleScores.set(j, score);
-				System.out.println("Montecarlo's final score: " + score);
+//				System.out.println("Montecarlo's final score: " + score);
 //				System.out.println("finished monte carlo");
 				backpropogate(state, score);
 
@@ -291,6 +296,7 @@ public class MCTSThinker extends StateMachineGamer {
 		}
 
 	public boolean backpropogate(MachineState node,  int score) {
+		allNodes.add(node);
 		int visitsSoFar = node.getVisits();
 		node.setVisits(visitsSoFar + 1);
 		int utilSoFar = node.getUtility();
@@ -333,8 +339,6 @@ public int montecarlo(Role role, MachineState state, StateMachine machine) throw
 public int depthcharge (Role role, MachineState state, StateMachine machine, List<MachineState> visited) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
 	//if (visited.contains(state)) {
 //		System.out.println("Visited Contains");
-	//	return 0;
-	//}
 
 	if (machine.isTerminal(state) || visited.contains(state)) {
 		depthchargeCount++;
@@ -346,10 +350,16 @@ public int depthcharge (Role role, MachineState state, StateMachine machine, Lis
 	visited.add(state);
 
 	if (!(timeLeft(1000))) {
-		System.out.println("ran out of time, about to return: 0");
-		wasTimedOut = true;
+		int num = 0;
+		if (machine.getRoles().size() > 1) {
+			num = evalfn(role, state, machine);
+		} else {
+			num = machine.getGoal(state, role);
+		}
+		System.out.println("ran out of time, about to return: " + num);
+		depthchargeCount++;
 		//			return evalfn(role, state, machine);
-		return 0;
+		return num;
 	}
 
 	Random randomizer = new Random();

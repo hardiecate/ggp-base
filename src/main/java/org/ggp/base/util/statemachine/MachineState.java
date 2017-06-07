@@ -116,4 +116,15 @@ public class MachineState {
 	public void addParent(MachineState parent) {
 		this.parents.add(parent);
 	}
+
+	public void clearAll() {
+		if (this.children != null) {
+			this.children.clear();
+		}
+		if (this.parents != null) {
+			this.parents.clear();
+		}
+		this.visits = 0;
+		this.utility = 0;
+	}
 }
