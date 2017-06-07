@@ -13,9 +13,11 @@ import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
 import org.ggp.base.util.statemachine.StateMachine;
+import org.ggp.base.util.statemachine.cache.CachedStateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
+import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
 // Makes a fixed depth without heuristics move
 
@@ -29,7 +31,7 @@ public class MCTSThinker extends StateMachineGamer {
 	boolean restrict = true;
 	int timeoutPadding = 2000;
 	boolean wasTimedOut = false;
-	int mcsCount = 100;
+	int mcsCount = 2;
 	long returnBy;
 	Move bestSoFar = null;
 	StateMachine machine = null;
@@ -42,9 +44,9 @@ public class MCTSThinker extends StateMachineGamer {
 
 	@Override
 	public StateMachine getInitialStateMachine() {
-//				return new CachedStateMachine(new ProverStateMachine());
+		return new CachedStateMachine(new ProverStateMachine());
 
-		return new PropnetStateMachine(); // changed to propnet machine
+//		return new PropnetStateMachine(); // changed to propnet machine
 	}
 
 
@@ -121,7 +123,14 @@ public class MCTSThinker extends StateMachineGamer {
 			//Also within this method, add successors to the tree
 			MachineState state = select(stateOrigin);
 			if (!expand(state)) continue;
+			for (MachineState child: children.get(state)) {
+				int score = montecarlo(myRole, child, machine);
+				System.out.println("finished monte carlo");
+				backpropogate(state, score);
+			}
 
+
+			/*
 			// Setting the possible scores
 			for (int i = 0; i < numMoves; i++) {
 				//				System.out.println("Exploring move number: " + i);
@@ -148,6 +157,7 @@ public class MCTSThinker extends StateMachineGamer {
 					backpropogate(state, score);
 				}
 			}
+			*/
 		}
 
 		System.out.println("Depth charge count: " + depthchargeCount);
@@ -208,16 +218,24 @@ public class MCTSThinker extends StateMachineGamer {
 	}
 
 	public int selectfn(MachineState node, MachineState parent) throws MoveDefinitionException, GoalDefinitionException {
-		int result = (int)((1.0*utility.get(node)/(1.0*visited.get(node))) + Math.sqrt(2*Math.log(visited.get(parent))))/(visited.get(node));
+		int vis = visited.get(node);
+		int uti = utility.get(node);
+		if (utility == null) { uti = 0;}
+		int parvis = visited.get(parent);
 		System.out.println("Utility is: " + utility.get(node));
 		System.out.println("Visit count is: " + visited.get(node));
 		System.out.println("Parent visit count is: " + visited.get(parent));
 		System.out.println();
-		return (int)((1.0*utility.get(node)/(1.0*visited.get(node))) + Math.sqrt(2*Math.log(visited.get(parent))))/(visited.get(node));
+		int result = (int)((1.0*uti/(1.0*vis) + Math.sqrt(2*Math.log(parvis)))/(vis));
+		return (result);
 	}
 
 	public MachineState select(MachineState node) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
-		if (!(visited.containsKey(node))) {return node;}
+		if (!(visited.containsKey(node))) {
+			System.out.println("done");
+			visited.put(node, 1);
+			return node;
+		}
 		List<MachineState> myChildren = children.get(node);
 
 		// Update the parents list
@@ -240,6 +258,7 @@ public class MCTSThinker extends StateMachineGamer {
 		// Return first child that has not been visited yet
 		for (MachineState child : myChildren) {
 			if (!(visited.containsKey(child))) {
+				visited.put(child, 1);
 				return child;
 			}
 		}
@@ -254,6 +273,7 @@ public class MCTSThinker extends StateMachineGamer {
 				result=child;
 			}
 		}
+		visited.put(result, visited.get(result) + 1);
 		return select(result);
 	}
 
@@ -289,13 +309,20 @@ public class MCTSThinker extends StateMachineGamer {
 		}
 
 	public boolean backpropogate(MachineState node,  int score) {
+		System.out.println("help1");
 		if (visited.containsKey(node)) {
+			System.out.println("help2");
 			visited.put(node, visited.get(node) + 1);
-			utility.put(node, utility.get(node) + score);
+			if (utility.containsKey(node)) {
+				utility.put(node, utility.get(node) + score);
+			} else {
+				utility.put(node, score);
+			}
 		} else {
 			visited.put(node,  1);
 			utility.put(node, score);
 		}
+		System.out.println("help3");
 		List<MachineState> pars = parents.get(node);
 		if (pars != null) {
 			for (MachineState parent : pars) {
@@ -305,7 +332,7 @@ public class MCTSThinker extends StateMachineGamer {
 				backpropogate(parent, score);
 			}
 		}
-
+		System.out.println("help4");
 		return true;
 }
 
@@ -320,7 +347,9 @@ public int montecarlo(Role role, MachineState state, StateMachine machine) throw
 	int total = 0;
 
 	for (int i = 0; i < mcsCount; i++) {
+		System.out.println("before depth");
 		int charge = depthcharge(role, state, machine);
+		System.out.println("after depth");
 		total = total + charge;
 	}
 	return (int) (1.0*total/mcsCount);
@@ -345,7 +374,7 @@ public int depthcharge (Role role, MachineState state, StateMachine machine) thr
 	//	    }
 
 	if (!(timeLeft(1000))) {
-		//			System.out.println("ran out of time, about to return: 0");
+		System.out.println("ran out of time, about to return: 0");
 		wasTimedOut = true;
 		//			return evalfn(role, state, machine);
 		return 0;
