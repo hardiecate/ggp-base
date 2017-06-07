@@ -30,7 +30,7 @@ public class MCTSThinker extends StateMachineGamer {
 	double last_player_score = 0;
 	boolean restrict = true;
 	int timeoutPadding = 1000;
-	int mcsCount = 10;
+	int mcsCount = 5;
 	long returnBy;
 	Move bestSoFar = null;
 	StateMachine machine = null;
@@ -135,7 +135,10 @@ public class MCTSThinker extends StateMachineGamer {
 			if (state == null) {
 				return chooseMove(possibleMoves);
 			}
-			if (!expand(state)) continue;
+			if (!expand(state)) {
+				backpropogate(state, machine.getGoal(state, myRole));
+				continue;
+			}
 			for (int j = 0; j < state.getChildren().size(); j++) {
 				MachineState child = state.getChildren().get(j);
 				int score = montecarlo(myRole, child, machine);
@@ -199,22 +202,19 @@ public class MCTSThinker extends StateMachineGamer {
 	}
 
 	public int selectfn(MachineState node, MachineState parent) throws MoveDefinitionException, GoalDefinitionException {
-//		System.out.println("Utility is " + node.getUtility());
-//		System.out.println("Visit is " + node.getVisits());
-//		System.out.println("Parent visit is " + parent.getVisits());
+		if (machine.isTerminal(node)) return machine.getGoal(node, myRole);
 		return (int) ((double)node.getUtility()/(double)node.getVisits() + Math.sqrt(2*Math.log(parent.getVisits())/node.getVisits()));
 	}
 
 	public MachineState select(MachineState node) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
-		System.out.println("select executed");
+//		System.out.println("select executed");
 		if (node.getVisits() == 0) {;
 			return node;
 		}
-
+		if (machine.isTerminal(node)) return node;
 		if (!(timeLeft(1000))) {
 			return null;
 		}
-
 		List<MachineState> myChildren = node.getChildren();
 
 		// Return first child that has not been visited yet
@@ -225,8 +225,6 @@ public class MCTSThinker extends StateMachineGamer {
 		}
 		int score = Integer.MIN_VALUE;
 		MachineState result = node;
-//		System.out.println("result at first is: " + result);
-		// All children have been visited. Find highest score among children.
 		for (MachineState child: myChildren) {
 			int newscore = selectfn(child, node);
 			if (newscore>score) {
@@ -239,20 +237,23 @@ public class MCTSThinker extends StateMachineGamer {
 	}
 
 		public boolean expand (MachineState node) throws MoveDefinitionException, TransitionDefinitionException {
-			System.out.println("expand executed");
+//			System.out.println("expand executed");
 			List<List<Move>> moves = machine.getLegalJointMoves(node);
 			for (List<Move> scenario : moves) {
 				MachineState newstate = machine.getNextState(node, scenario);
 				newstate.setVisits(0);
 				newstate.setUtility(0);
-				List<MachineState> parent = new ArrayList<MachineState>();
-				parent.add(node);
-				newstate.setParents(parent);
-				if (node.getChildren() == null) {
-					List<MachineState> children = new ArrayList<MachineState>();
+				newstate.setParent(node);
+				if (!machine.isTerminal(node)) {
+					if (node.getChildren() == null) {
+						node.setChildren(new ArrayList<MachineState>());
+					}
+					List<MachineState> children = node.getChildren();
+					children.add(newstate);
 					node.setChildren(children);
+				} else {
+					return false;
 				}
-				node.addChild(newstate);
 			}
 			return true;
 		}
@@ -261,28 +262,13 @@ public class MCTSThinker extends StateMachineGamer {
 		allNodes.add(node);
 		node.setVisits(node.getVisits() + 1);
 		node.setUtility(node.getUtility() + score);
-		List<MachineState> parents = node.getParents();
-		if (parents != null) {
-			for (MachineState parent: parents) {
-				backpropogate(parent, score);
-			}
-		};
-		return true;
-		/*
-		allNodes.add(node);
-		node.setVisits(node.getVisits() + 1);
-		node.setUtility(node.getUtility() + score);
-		System.out.println("node's util is now " + node.getUtility());
-		List<MachineState> pars = node.getParents();
-		if (pars != null) {
-			for (MachineState parent : pars) {
-				List<MachineState> children = node.getChildren();
-				if (children != null && children.contains(parent)) continue;
-				backpropogate(parent, score);
-			}
+		if (node.getParent() != null && node.getParent().getChildren() != null) {
+			if (node.getParent().getChildren().contains(node)) return true;
+		}
+		if (node.getParent() != null) {
+			backpropogate(node.getParent(), score);
 		}
 		return true;
-		*/
 }
 
 public int montecarlo(Role role, MachineState state, StateMachine machine) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
@@ -291,23 +277,6 @@ public int montecarlo(Role role, MachineState state, StateMachine machine) throw
 		total = total + depthcharge(role, state, machine, new ArrayList<MachineState>());
 	};
 	return (int) ((double)total/mcsCount);
-	/*
-	if (machine.isTerminal(state)) {
-		System.out.println("montecarlo was given a terminal state");
-		//			System.out.println("reached a terminal state, about to return: " + machine.getGoal(state,  role));
-		if (role == null) {
-			System.out.println("Our role was null for some reason.");
-		}
-		return machine.getGoal(state, role);
-	}
-
-	int total = 0;
-	for (int i = 0; i < mcsCount; i++) {
-		int charge = depthcharge(role, state, machine, new ArrayList<MachineState>());
-		total = total + charge;
-	}
-	return (int) (1.0*total/mcsCount);
-	*/
 }
 
 public int depthcharge (Role role, MachineState state, StateMachine machine, List<MachineState> visited) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
@@ -323,25 +292,6 @@ public int depthcharge (Role role, MachineState state, StateMachine machine, Lis
 	int random = randomizer.nextInt(possibles.size());
 	MachineState newstate = machine.getNextState(state, possibles.get(random));
 	return depthcharge(role,newstate, machine, visited);
-	/*
-	if (machine.isTerminal(state) || visited.contains(state)) {
-		depthchargeCount++;
-		return machine.getGoal(state, role);
-	}
-	visited.add(state);
-	if (!(timeLeft(0))) {
-		int num = machine.getGoal(state, role);
-		System.out.println("ran out of time, about to return: " + num);
-		depthchargeCount++;
-		return num;
-	}
-	Random randomizer = new Random();
-	List<List<Move>> legalJointMoves = machine.getLegalJointMoves(state);
-	int random = randomizer.nextInt(legalJointMoves.size());
-	List<Move> randomRound = legalJointMoves.get(random);
-	MachineState newstate = machine.getNextState(state, randomRound);
-	return depthcharge(role, newstate, machine, visited);
-	*/
 }
 
 

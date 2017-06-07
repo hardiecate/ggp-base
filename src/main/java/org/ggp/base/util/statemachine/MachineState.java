@@ -11,15 +11,14 @@ public class MachineState {
     private int visits;
     private int utility;
     private List<MachineState> children;
-    private List<MachineState> parents;
+    private MachineState parent;
 
 	public MachineState() {
         this.contents = null;
         this.setVisits(0);
         this.setUtility(0);
         this.setChildren(new ArrayList<MachineState>());
-        this.setParents(new ArrayList<MachineState>());
-
+        this.setParent(null);
     }
 
     /**
@@ -105,25 +104,18 @@ public class MachineState {
 		this.children.add(child);
 	}
 
-	public List<MachineState> getParents() {
-		return parents;
+	public MachineState getParent() {
+		return parent;
 	}
 
-	public void setParents(List<MachineState> parents) {
-		this.parents = parents;
+	public void setParent(MachineState parent) {
+		this.parent = parent;
 	}
-
-	public void addParent(MachineState parent) {
-		this.parents.add(parent);
-	}
-
 	public void clearAll() {
 		if (this.children != null) {
 			this.children.clear();
 		}
-		if (this.parents != null) {
-			this.parents.clear();
-		}
+		this.parent = null;
 		this.visits = 0;
 		this.utility = 0;
 	}
