@@ -212,19 +212,14 @@ public class MCTSThinker extends StateMachineGamer {
 	}
 
 	public int selectfn(MachineState node, MachineState parent) throws MoveDefinitionException, GoalDefinitionException {
-		int vis = node.getVisits();
-		int uti = node.getUtility();
-		int parvis = parent.getVisits();
-		System.out.println("Utility is: " + uti);
-		System.out.println("Visit count is: " + vis);
-		System.out.println("Parent visit count is: " + parvis);
-		System.out.println();
-		int result = (int)((1.0*uti/(1.0*vis) + Math.sqrt(2*Math.log(parvis)))/(vis));
-		return (result);
+		System.out.println("Utility is " + node.getUtility());
+		System.out.println("Visit is " + node.getVisits());
+		System.out.println("Parent visit is " + parent.getVisits());
+		return (int) ((double)node.getUtility()/(double)node.getVisits() + Math.sqrt(2*Math.log(parent.getVisits())/node.getVisits()));
 	}
 
 	public MachineState select(MachineState node) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
-		if (node.getVisits() == 0) {
+		if (node.getVisits() == 0) {;
 			return node;
 		}
 		List<MachineState> myChildren = node.getChildren();
@@ -324,7 +319,7 @@ public int montecarlo(Role role, MachineState state, StateMachine machine) throw
 
 	for (int i = 0; i < mcsCount; i++) {
 		System.out.println("before depth");
-		int charge = depthcharge(role, state, machine);
+		int charge = depthcharge(role, state, machine, new ArrayList<MachineState>());
 		System.out.println("after depth");
 		total = total + charge;
 	}
@@ -332,8 +327,11 @@ public int montecarlo(Role role, MachineState state, StateMachine machine) throw
 
 }
 
-public int depthcharge (Role role, MachineState state, StateMachine machine) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
-
+public int depthcharge (Role role, MachineState state, StateMachine machine, List<MachineState> visited) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+	if (visited.contains(state)) {
+		return 0;
+	}
+	visited.add(state);
 
 	if (machine.isTerminal(state)) {
 		depthchargeCount++;
@@ -342,13 +340,6 @@ public int depthcharge (Role role, MachineState state, StateMachine machine) thr
 		//			System.out.println("reached a terminal state, about to return: " + machine.getGoal(state,  role));
 		return machine.getGoal(state, role);
 	}
-
-	//	    if (System.currentTimeMillis() >= returnBy) {
-	//	    	wasTimedOut = true;
-	//	    	System.out.println("We timed out!");
-	//	        return 0;
-	//	    }
-
 	if (!(timeLeft(1000))) {
 		System.out.println("ran out of time, about to return: 0");
 		wasTimedOut = true;
@@ -366,7 +357,7 @@ public int depthcharge (Role role, MachineState state, StateMachine machine) thr
 //	System.out.println("New state: " + newstate.toString());
 //	System.out.println();
 
-	return depthcharge(role, newstate, machine);
+	return depthcharge(role, newstate, machine, visited);
 }
 
 
