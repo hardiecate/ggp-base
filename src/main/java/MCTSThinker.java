@@ -1,8 +1,6 @@
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 
 import org.ggp.base.apps.player.Player;
@@ -31,15 +29,11 @@ public class MCTSThinker extends StateMachineGamer {
 	boolean restrict = true;
 	int timeoutPadding = 2000;
 	boolean wasTimedOut = false;
-	int mcsCount = 2;
+	int mcsCount = 100;
 	long returnBy;
 	Move bestSoFar = null;
 	StateMachine machine = null;
 	Role myRole = null;
-	Map<MachineState, Integer> visited = new HashMap<MachineState, Integer>();
-	Map<MachineState, Integer> utility = new HashMap<MachineState, Integer>();
-	Map<MachineState, List<MachineState>> parents = new HashMap<MachineState, List<MachineState>>();
-	Map<MachineState, List<MachineState>> children = new HashMap<MachineState, List<MachineState>>();
 	int depthchargeCount;
 
 	@Override
@@ -123,7 +117,7 @@ public class MCTSThinker extends StateMachineGamer {
 			//Also within this method, add successors to the tree
 			MachineState state = select(stateOrigin);
 			if (!expand(state)) continue;
-			for (MachineState child: children.get(state)) {
+			for (MachineState child: state.getChildren()) {
 				int score = montecarlo(myRole, child, machine);
 				System.out.println("finished monte carlo");
 				backpropogate(state, score);
@@ -161,8 +155,8 @@ public class MCTSThinker extends StateMachineGamer {
 		}
 
 		System.out.println("Depth charge count: " + depthchargeCount);
-		visited.clear();
-		parents.clear();
+		//visited.clear();
+		//parents.clear();
 		return chooseMove(possibleScores, possibleMoves);
 
 	}
@@ -218,47 +212,38 @@ public class MCTSThinker extends StateMachineGamer {
 	}
 
 	public int selectfn(MachineState node, MachineState parent) throws MoveDefinitionException, GoalDefinitionException {
-		int vis = visited.get(node);
-		int uti = utility.get(node);
-		if (utility == null) { uti = 0;}
-		int parvis = visited.get(parent);
-		System.out.println("Utility is: " + utility.get(node));
-		System.out.println("Visit count is: " + visited.get(node));
-		System.out.println("Parent visit count is: " + visited.get(parent));
+		int vis = node.getVisits();
+		int uti = node.getUtility();
+		int parvis = parent.getVisits();
+		System.out.println("Utility is: " + uti);
+		System.out.println("Visit count is: " + vis);
+		System.out.println("Parent visit count is: " + parvis);
 		System.out.println();
 		int result = (int)((1.0*uti/(1.0*vis) + Math.sqrt(2*Math.log(parvis)))/(vis));
 		return (result);
 	}
 
 	public MachineState select(MachineState node) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
-		if (!(visited.containsKey(node))) {
-			System.out.println("done");
-			visited.put(node, 1);
+		if (!(node.getVisits() == 0)) {
 			return node;
 		}
-		List<MachineState> myChildren = children.get(node);
+		List<MachineState> myChildren = node.getChildren();
+
+		if (myChildren == null) {
+			return node;
+		}
 
 		// Update the parents list
 		for (MachineState child : myChildren) {
-			if (parents.containsKey(child)) {
-				if (!(parents.get(child).contains(node))) {
-					List<MachineState> pars = parents.get(child);
-					pars.add(node); // Updating list of this child's parents
-					parents.put(node, pars); // Updating the global map
-
-				}
-			} else {
-				List<MachineState> pars = new ArrayList<MachineState>();
-				pars.add(node); // Updating list of this child's parents
-				parents.put(node, pars); // Updating the global map
-
+			List<MachineState> pars = child.getParents();
+			if (!pars.contains(node)) {
+				child.addParent(node);
 			}
 		}
 
 		// Return first child that has not been visited yet
 		for (MachineState child : myChildren) {
-			if (!(visited.containsKey(child))) {
-				visited.put(child, 1);
+			if (child.getVisits() == 0) {
 				return child;
 			}
 		}
@@ -273,19 +258,19 @@ public class MCTSThinker extends StateMachineGamer {
 				result=child;
 			}
 		}
-		visited.put(result, visited.get(result) + 1);
 		return select(result);
 	}
 
 		public boolean expand (MachineState node) throws MoveDefinitionException, TransitionDefinitionException {
-			if (machine.isTerminal(node)) {
-				if (children.containsKey(node)) {
-					children.remove(node);
+			//if (machine.isTerminal(node)) {
 
-				}
+			//	if (children.containsKey(node)) {
+			//		children.remove(node);
+
+			//	}
 				//			System.out.println("reached a terminal state, about to return: " + machine.getGoal(state,  role));
-				return false;
-			}
+			//	return false;
+			//}
 
 			List<Move> actions = machine.getLegalMoves(node, myRole);
 			for (Move action: actions) {
@@ -293,14 +278,13 @@ public class MCTSThinker extends StateMachineGamer {
 //				moves.add(action);
 				for (List<Move> scenario : moves) {
 					MachineState newstate = machine.getNextState(node, scenario);
-					if (children.containsKey(node)) {
-						List<MachineState> childs = children.get(node);
-						childs.add(newstate);
-						children.put(node, childs);
+					List<MachineState> childNodes = node.getChildren();
+					if (childNodes != null && !childNodes.contains(newstate)) {
+						node.addChild(newstate);
 					} else {
-						List<MachineState> childs = new ArrayList<MachineState> ();
-						childs.add(newstate);
-						children.put(node, childs);
+						List<MachineState> newChildren = new ArrayList<MachineState>();
+						newChildren.add(newstate);
+						node.setChildren(newChildren);
 					}
 				}
 
@@ -309,21 +293,12 @@ public class MCTSThinker extends StateMachineGamer {
 		}
 
 	public boolean backpropogate(MachineState node,  int score) {
-		System.out.println("help1");
-		if (visited.containsKey(node)) {
-			System.out.println("help2");
-			visited.put(node, visited.get(node) + 1);
-			if (utility.containsKey(node)) {
-				utility.put(node, utility.get(node) + score);
-			} else {
-				utility.put(node, score);
-			}
-		} else {
-			visited.put(node,  1);
-			utility.put(node, score);
-		}
-		System.out.println("help3");
-		List<MachineState> pars = parents.get(node);
+		int visitsSoFar = node.getVisits();
+		node.setVisits(visitsSoFar + 1);
+		int utilSoFar = node.getUtility();
+		node.setUtility(utilSoFar + score);
+		System.out.println("updated visits and util in backpropogate");
+		List<MachineState> pars = node.getParents();
 		if (pars != null) {
 			for (MachineState parent : pars) {
 				if (!(timeLeft(1000))) {
@@ -332,7 +307,7 @@ public class MCTSThinker extends StateMachineGamer {
 				backpropogate(parent, score);
 			}
 		}
-		System.out.println("help4");
+		System.out.println("returning from backpropogate fn");
 		return true;
 }
 

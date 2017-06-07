@@ -1,13 +1,25 @@
 package org.ggp.base.util.statemachine;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.ggp.base.util.gdl.grammar.GdlSentence;
 
 public class MachineState {
-    public MachineState() {
+    private int visits;
+    private int utility;
+    private List<MachineState> children;
+    private List<MachineState> parents;
+
+	public MachineState() {
         this.contents = null;
+        this.setVisits(0);
+        this.setUtility(0);
+        this.setChildren(new ArrayList<MachineState>());
+        this.setParents(new ArrayList<MachineState>());
+
     }
 
     /**
@@ -64,4 +76,44 @@ public class MachineState {
 
         return false;
     }
+
+	public int getVisits() {
+		return visits;
+	}
+
+	public void setVisits(int visits) {
+		this.visits = visits;
+	}
+
+	public int getUtility() {
+		return utility;
+	}
+
+	public void setUtility(int utility) {
+		this.utility = utility;
+	}
+
+	public List<MachineState> getChildren() {
+		return children;
+	}
+
+	public void setChildren(List<MachineState> children) {
+		this.children = children;
+	}
+
+	public void addChild(MachineState child) {
+		this.children.add(child);
+	}
+
+	public List<MachineState> getParents() {
+		return parents;
+	}
+
+	public void setParents(List<MachineState> parents) {
+		this.parents = parents;
+	}
+
+	public void addParent(MachineState parent) {
+		this.parents.add(parent);
+	}
 }
