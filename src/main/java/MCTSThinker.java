@@ -245,45 +245,19 @@ public class MCTSThinker extends StateMachineGamer {
 	}
 
 		public boolean expand (MachineState node) throws MoveDefinitionException, TransitionDefinitionException {
-			//if (machine.isTerminal(node)) {
-
-			//	if (children.containsKey(node)) {
-			//		children.remove(node);
-
-			//	}
-				//			System.out.println("reached a terminal state, about to return: " + machine.getGoal(state,  role));
-			//	return false;
-			//}
-
-			List<Move> actions = machine.getLegalMoves(node, myRole);
-			for (Move action: actions) {
-				List<List<Move>> moves = machine.getLegalJointMoves(node, myRole, action);
-//				moves.add(action);
-				for (List<Move> scenario : moves) {
-					MachineState newstate = machine.getNextState(node, scenario);
-					List<MachineState> childNodes = node.getChildren();
-
-					if (childNodes != null) {
-						if (!childNodes.contains(newstate)) {
-							node.addChild(newstate);
-						}
-					} else {
-						List<MachineState> newChildren = new ArrayList<MachineState>();
-						newChildren.add(newstate);
-						node.setChildren(newChildren);
-					}
-
-					if (newstate.getParents() != null) {
-						if (!newstate.getParents().contains(node)) {
-							newstate.addParent(node);
-						}
-					} else {
-						List<MachineState> newParents = new ArrayList<MachineState>();
-						newParents.add(node);
-						newstate.setParents(newParents);
-					}
+			List<List<Move>> moves = machine.getLegalJointMoves(node);
+			for (List<Move> scenario : moves) {
+				MachineState newstate = machine.getNextState(node, scenario);
+				newstate.setVisits(0);
+				newstate.setUtility(0);
+				List<MachineState> parent = new ArrayList<MachineState>();
+				parent.add(node);
+				newstate.setParents(parent);
+				if (node.getChildren() == null) {
+					List<MachineState> children = new ArrayList<MachineState>();
+					node.setChildren(children);
 				}
-
+				node.addChild(newstate);
 			}
 			return true;
 		}
@@ -329,6 +303,7 @@ public int montecarlo(Role role, MachineState state, StateMachine machine) throw
 
 public int depthcharge (Role role, MachineState state, StateMachine machine, List<MachineState> visited) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
 	if (visited.contains(state)) {
+		System.out.println("Visited Contains");
 		return 0;
 	}
 	visited.add(state);
