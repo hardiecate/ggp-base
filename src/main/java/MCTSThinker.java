@@ -104,7 +104,7 @@ public class MCTSThinker extends StateMachineGamer {
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
 		depthchargeCount = 0;
 		wasTimedOut = false;
-		System.out.println(limit);
+//		System.out.println(limit);
 
 		int calculationTime = 1000;
 		returnBy = timeout - timeoutPadding;
@@ -128,10 +128,13 @@ public class MCTSThinker extends StateMachineGamer {
 			//Do selection routine to find our unvisited starting point
 			//Also within this method, add successors to the tree
 			MachineState state = select(origin);
+			if (state == null) {
+				return chooseMove(possibleMoves);
+			}
 			if (!expand(state)) continue;
 //			for (MachineState child: state.getChildren()) {
-			System.out.println("Number of moves available: " + numMoves);
-			System.out.println("This should be the same number?: " + state.getChildren().size());
+//			System.out.println("Number of moves available: " + numMoves);
+//			System.out.println("This should be the same number?: " + state.getChildren().size());
 			for (int j = 0; j < state.getChildren().size(); j++) {
 				MachineState child = state.getChildren().get(j);
 				int score = montecarlo(myRole, child, machine);
@@ -231,9 +234,9 @@ public class MCTSThinker extends StateMachineGamer {
 	}
 
 	public int selectfn(MachineState node, MachineState parent) throws MoveDefinitionException, GoalDefinitionException {
-		System.out.println("Utility is " + node.getUtility());
-		System.out.println("Visit is " + node.getVisits());
-		System.out.println("Parent visit is " + parent.getVisits());
+//		System.out.println("Utility is " + node.getUtility());
+//		System.out.println("Visit is " + node.getVisits());
+//		System.out.println("Parent visit is " + parent.getVisits());
 		return (int) ((double)node.getUtility()/(double)node.getVisits() + Math.sqrt(2*Math.log(parent.getVisits())/node.getVisits()));
 	}
 
@@ -241,6 +244,11 @@ public class MCTSThinker extends StateMachineGamer {
 		if (node.getVisits() == 0) {;
 			return node;
 		}
+
+		if (!(timeLeft(1000))) {
+			return null;
+		}
+
 		List<MachineState> myChildren = node.getChildren();
 
 		// Return first child that has not been visited yet
@@ -324,7 +332,7 @@ public int montecarlo(Role role, MachineState state, StateMachine machine) throw
 
 public int depthcharge (Role role, MachineState state, StateMachine machine, List<MachineState> visited) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
 	if (visited.contains(state)) {
-		System.out.println("Visited Contains");
+//		System.out.println("Visited Contains");
 		return 0;
 	}
 	visited.add(state);
@@ -332,7 +340,7 @@ public int depthcharge (Role role, MachineState state, StateMachine machine, Lis
 	if (machine.isTerminal(state)) {
 		depthchargeCount++;
 //		System.out.println("Terminal state:");
-		System.out.println("Returning: " + machine.getGoal(state, role));
+//		System.out.println("Returning: " + machine.getGoal(state, role));
 		//			System.out.println("reached a terminal state, about to return: " + machine.getGoal(state,  role));
 		return machine.getGoal(state, role);
 	}
