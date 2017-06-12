@@ -30,7 +30,7 @@ public class MCTSThinker extends StateMachineGamer {
 	double last_player_score = 0;
 	boolean restrict = true;
 	int timeoutPadding = 1000;
-	int mcsCount = 15;
+	int mcsCount = 7;
 	long returnBy;
 	Move bestSoFar = null;
 	StateMachine machine = null;
